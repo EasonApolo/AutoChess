@@ -15,6 +15,13 @@ export default {
       h: 0,
       board: {
         grid: [[], [], [], [], [], []]
+      },
+      store: {
+        cards: [{}, {}, {}, {}, {}]
+      },
+      color: {
+        section: 'rgb(250, 250, 250)',
+        obj: 'rgb(100, 100, 100)'
       }
     }
   },
@@ -27,6 +34,7 @@ export default {
     this.canvas = document.getElementById('canvas')
     this.ctx = this.canvas.getContext('2d')
     this.drawBoard()
+    this.drawStore()
   },
   methods: {
     initBoard () {
@@ -36,15 +44,30 @@ export default {
         }
       }
     },
+    drawStore () {
+      let ctx = this.ctx
+      const bw = 1800
+      const bh = 300
+      const cw = 260
+      let strL = this.w/2-bw/2
+      let strT = this.h-bh
+      ctx.fillStyle = this.color.section
+      ctx.fillRect(strL, strT, bw, bh)
+      let cards = this.store.cards
+      for (let i in cards) {
+        ctx.strokeStyle = this.color.obj
+        ctx.strokeRect(strL + bw + (i - 5) * cw + (i - 5) * 20, strT + 20, cw, cw)
+      }
+    },
     drawBoard () {
       let ctx = this.ctx
-      const bMarTop = 300
-      const bw = 1600
-      const bh = 1200
-      const gr = 120
+      const bMarTop = 200
+      const bw = 1500
+      const bh = 1100
+      const gr = 110
       const ratio = Math.sqrt(3) / 2
-      this.ctx.strokeStyle = 'rgb(150, 150, 150)'
-      this.ctx.strokeRect(this.w/2-bw/2, bMarTop, bw, bh)
+      ctx.fillStyle = this.color.section
+      ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
       for (let i in this.board.grid) {
         let bias = i % 2 == 1 ? bias = ratio*gr/2 : -ratio*gr/2
         let cenT = bh/2+bMarTop+(i-2.5)*1.5*gr
@@ -58,7 +81,7 @@ export default {
             this.ctx.lineTo(cenL+x, cenT+y)
           }
           ctx.closePath()
-          ctx.strokeStyle = 'rgb(100, 100, 100)'
+          ctx.strokeStyle = this.color.obj
           ctx.stroke()
         }
       }
