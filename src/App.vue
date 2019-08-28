@@ -202,7 +202,6 @@ export default {
         if (cards[i] != undefined) {
           let img = new Image()
           img.src = cards[i].src
-          console.log(img)
           ctx.drawImage(img, cardL, cardT, cw, cw)
         }
       }
