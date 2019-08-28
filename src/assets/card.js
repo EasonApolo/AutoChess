@@ -1,4 +1,4 @@
-[
+export default [
     {
         "id": 0,
         "name": "麦林炮手",
@@ -8,7 +8,7 @@
     {
         "id": 1,
         "name": "圣枪游侠",
-        "cost": 1,
+        "cost": 2,
         "cat": [0, 2]
     }
 ]

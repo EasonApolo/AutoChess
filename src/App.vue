@@ -1,13 +1,17 @@
 <template>
   <div id="app">
     <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click'></canvas>
+    <div v-for='src in allsrc' :key='src' style='display:none'>
+      <img :src='src'>
+    </div>
   </div>
 </template>
 
 <script>
-import CardInfo from './assets/card.json'
-import TypeInfo from './assets/type.json'
+import CardInfo from './assets/card.js'
+import TypeInfo from './assets/type.js'
 import PosInfo from './assets/position.js'
+import ChessInfo from './assets/chess.js'
 
 export default {
   name: 'app',
@@ -19,7 +23,7 @@ export default {
       h: 0,
       game: {
         turn: 0,
-        gold: 1,
+        gold: 3,
         lvl: 1,
         costUpgrade: 4,
         costRedeal: 2
@@ -28,10 +32,10 @@ export default {
         grid: [[], [], [], [], [], []]
       },
       store: {
-        cards: [{}, {}, {}, {}, {}]
+        cards: new Array(5).fill(undefined)
       },
       hand: {
-        cards: [{}, {}, {}, {}, {}, {}, {}, {}, {}]
+        cards: new Array(9).fill(undefined)
       },
       color: {
         section: 'rgb(250, 250, 250)',
@@ -40,7 +44,8 @@ export default {
         reDealButton: 'rgb(199, 99, 99)',
         upgradeButton: 'rgb(99, 99, 199)',
         gold: '#ffd700'
-      }
+      },
+      allsrc: []
     }
   },
   created () {
@@ -52,11 +57,22 @@ export default {
     this.canvas = document.getElementById('canvas')
     this.ctx = this.canvas.getContext('2d')
     this.deal()
-    this.drawBoard()
-    this.drawHand()
-    this.drawStore()
+    this.main()
   },
   methods: {
+    /*
+      main thread
+      */
+    main () {
+      this.clearAll()
+      this.drawBoard()
+      this.drawHand()
+      this.drawStore()
+      window.requestAnimationFrame(this.main);
+    },
+    /*
+      init functions
+      */
     initBoard () {
       for (let i in this.board.grid) {
         for (let j = 0; j < 7; j++) {
@@ -64,6 +80,9 @@ export default {
         }
       }
     },
+    /*
+      user actions
+      */
     click (e) {
       let x = e.clientX*2
       let y = e.clientY*2
@@ -73,18 +92,67 @@ export default {
       }
       info = PosInfo.hand
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
-        console.log('hand')
+        if (x-(this.w/2-info.w/2) % (info.sp+info.w1) < info.sp || (y-info.marTop) % (info.w1+info.sp) < info.sp) return // blank space
+        
       }
       info = PosInfo.store
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>this.h-info.h && y<this.h) {
-        console.log('store')
+        let left = x-(this.w/2-info.w/2)
+        let top = y-(this.h-info.h)
+        if (left%(info.w1+info.sp)<info.sp || top%(info.w1+info.sp)<info.sp) return
+        else if (left < info.w1+info.sp) {
+          if (top%(info.bh+info.sp)<info.bh) return
+          else if (Math.floor(top/(info.bh+info.sp)) == 1) {
+            this.buyDeal()
+          } else if (Math.floor(top/(info.bh+info.sp)) == 1) {
+            this.buyUpgrade()
+          }
+        }
+        else {
+          let buy = Math.floor(left / (info.w1+info.sp)) - 1
+          this.buyCard(buy)
+        }
       }
     },
+    /*
+      store related functions
+      */
     deal () {
       for (let i = 0; i < 5; i++) {
         let cardId = Math.floor(Math.random()*CardInfo.length)
         this.store.cards[i] = CardInfo[cardId]
       }
+    },
+    buyDeal () {console.log('deal')},
+    buyUpgrade () {console.log('upgrade')},
+    buyCard(storeId) {
+      let wannaBuy = this.store.cards[storeId]
+      if (this.game.gold >= wannaBuy.cost) {
+        this.store.cards[storeId] = undefined
+        this.game.gold -= wannaBuy.cost
+        this.addChess(wannaBuy.id)
+      }
+    },
+    /*
+      game inline functions
+      */
+    addChess (cardId) {
+      let cards = this.hand.cards
+      for (let i in cards) {
+        if (cards[i] === undefined) {
+          cards[i] = ChessInfo[cardId]
+          cards[i].hold = false         // init hold
+          this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+          break
+        }
+      }
+    },
+    /*
+      draw functions
+      */
+    clearAll () {
+      let ctx = this.ctx
+      ctx.clearRect(0, 0, this.w, this.h)
     },
     drawBoard () {
       let ctx = this.ctx
@@ -131,6 +199,12 @@ export default {
         let cardL = this.w / 2 + (i-4-0.5)*cw+(i-4)*sp
         let cardT = handT + sp
         ctx.strokeRect(cardL, cardT, cw, cw)
+        if (cards[i] != undefined) {
+          let img = new Image()
+          img.src = cards[i].src
+          console.log(img)
+          ctx.drawImage(img, cardL, cardT, cw, cw)
+        }
       }
     },
     drawStore () {
@@ -151,8 +225,10 @@ export default {
         let cardL = strL + bw + (i - 5) * cw + (i - 5) * info.sp
         let cardT = strT + info.sp
         ctx.strokeRect(cardL, cardT, cw, cw)
+        if (cards[i] === undefined) continue
         ctx.fillStyle = this.color.cardText
         ctx.font = '28px YaHei'
+        ctx.textAlign = 'start'
         ctx.fillText(cards[i].name, cardL+14, cardT+36)
         for (let j in cards[i].cat) {
           ctx.fillText(TypeInfo[cards[i].cat[j]], cardL+14, cardT+120+j*40)
