@@ -12,7 +12,9 @@ import CardInfo from './assets/card.js'
 import TypeInfo from './assets/type.js'
 import PosInfo from './assets/position.js'
 import ChessInfo from './assets/chess.js'
-import { setTimeout } from 'timers';
+import ColorInfo from './assets/color.js'
+import { setTimeout } from 'timers'
+var PF = require('pathfinding')
 
 export default {
   name: 'app',
@@ -32,7 +34,8 @@ export default {
       },
       hold: undefined,
       board: {
-        grid: [[], [], [], [], [], []]
+        grid: [[], [], [], [], [], []],
+        pfgrid: new PF.Grid(6, 7)
       },
       store: {
         cards: new Array(5).fill(undefined)
@@ -41,14 +44,9 @@ export default {
         cards: new Array(9).fill(undefined)
       },
       color: {
-        section: 'rgb(250, 250, 250)',
-        obj: 'rgb(100, 100, 100)',
-        cardText: 'rgb(66, 66, 66)',
-        reDealButton: 'rgb(199, 99, 99)',
-        upgradeButton: 'rgb(99, 99, 199)',
-        gold: '#ffd700'
       },
-      allsrc: []
+      allsrc: [],
+      queue: []
     }
   },
   created () {
@@ -65,6 +63,14 @@ export default {
     this.ctx = this.canvas.getContext('2d')
     this.deal()
     this.main()
+    setTimeout(() => {
+      console.log('set opponent')
+      this.setOppChess()
+    }, 3000)
+    setTimeout(() => {
+      console.log('round start')
+      this.startRound()
+    }, 10000)
   },
   methods: {
     /*
@@ -76,11 +82,10 @@ export default {
       this.drawHand()
       this.drawStore()
       this.drawHold()
-      window.requestAnimationFrame(this.main);
-      setTimeout(10000, () => {
-        console.log('round start')
-        this.startRound()
-      })
+      for (let i in this.queue) {
+        this.queue[i]()
+      }
+      window.requestAnimationFrame(this.main)
     },
     /*
       init functions
@@ -167,34 +172,79 @@ export default {
       }
     },
     /*
+      game procedure
+      */
+    startRound () {
+      this.queue.push(this.checkRemain)
+      this.queue.push(this.actAll)
+    },
+    setOppChess () {
+      this.setChess(1, 4, this.createChess(0, 1))
+      this.setChess(0, 5, this.createChess(1, 1))
+    },
+    actAll () {
+      let grid = this.board.grid
+      for (let i in grid) {
+        for (let j in grid[i]) {
+          if (grid[i][j] !== undefined) {
+            // if (grid[i][j].status.free) {
+            //   this.findNearestOppo(grid[i][j], i, j)
+            // }
+          }
+        }
+      }
+    },
+    checkRemain () {
+      let grid = this.board.grid
+      let camp0 = 0
+      let camp1 = 0
+      for (let i in grid) {
+        for (let j in grid[i]) {
+          if (grid[i][j] === undefined) continue
+          else if (grid[i][j].camp === 0) camp0++
+          else if (grid[i][j].camp === 1) camp1++
+        }
+      }
+      if (camp0 === 0) {console.log('you lose')}
+      else if (camp1 === 0) {console.log('you win')}
+    },
+    /*
       game inline functions
       */
-    setOppChess () {
-      
+    findNearestOppo (chess, i, j) {
+
     },
-    startRound () {
-      this.setOppChess()
+    setGrid (i, j, chess) {
+      this.board.grid[i][j] = chess
+      this.board.pfgrid.setWalkableAt(i, j, chess===undefined)
     },
     setChess (j, i, chess=undefined) {
       let grid = this.board.grid
-      if (chess === undefined) {
+      // camp=0 friend, camp=1 opponent
+      if (chess === undefined) {  // swap hold and grid[i][j]
+        if (j <= 2) return        // cannot set at j<=2
         let tmp = this.hold
         this.hold = grid[j][i]
-        grid[j][i] = tmp
-      } else {
-        grid[j][i] = chess
+        this.setGrid(j, i, tmp)
+      } else {  // system auto set
+        this.setGrid(j, i, chess)
       }
     },
     addChess (cardId) {
       let cards = this.hand.cards
       for (let i in cards) {
         if (cards[i] === undefined) {
-          cards[i] = ChessInfo[cardId]
-          cards[i].hold = false         // init hold
+          cards[i] = this.createChess(cardId, 0)
           this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
           break
         }
       }
+    },
+    createChess (id, camp) {
+      let obj = Object.assign({}, ChessInfo[id])
+      obj.hold = false         // init hold
+      obj.camp = camp
+      return obj
     },
     /*
       draw functions
@@ -213,7 +263,7 @@ export default {
       const gr = info.w1
       const w2 = info.w2
       const ratio = info.ratio
-      ctx.fillStyle = this.color.section
+      ctx.fillStyle = ColorInfo.section
       ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
       for (let i in grid) {
         let bias = i % 2 == 1 ? bias = ratio*gr/2 : -ratio*gr/2
@@ -228,12 +278,19 @@ export default {
             this.ctx.lineTo(cenL+x, cenT+y)
           }
           ctx.closePath()
-          ctx.strokeStyle = this.color.obj
+          ctx.strokeStyle = ColorInfo.obj
           ctx.stroke()
-          if (grid[i][j] !== undefined) {
+          let chess = grid[i][j]
+          if (chess !== undefined) {
             let img = new Image()
-            img.src = grid[i][j].src
+            img.src = chess.src
             ctx.drawImage(img, cenL-w2/2, cenT-w2/2, w2, w2)
+            // hp
+            ctx.fillStyle = ColorInfo.chessHp
+            ctx.fillRect(cenL-info.hpW/2, cenT-info.hpT, chess.hp/chess.hp*info.hpW, info.hpH)
+            // hp border
+            // ctx.strokeStyle = ColorInfo.chessHpBorder
+            // ctx.strokeRect(cenL-info.hpW/2, cenT-info.hpT, info.hpW, info.hpH)
           }
         }
       }
@@ -248,10 +305,10 @@ export default {
       const handT = info.marTop
       let handL = this.w/2-hw/2
       let cards = this.hand.cards
-      ctx.fillStyle = this.color.section
+      ctx.fillStyle = ColorInfo.section
       ctx.fillRect(handL, handT, hw, hh)
       for (let i in cards) {
-        ctx.strokeStyle = this.color.obj
+        ctx.strokeStyle = ColorInfo.obj
         let cardL = this.w / 2 + (i-4-0.5)*cw+(i-4)*sp
         let cardT = handT + sp
         ctx.strokeRect(cardL, cardT, cw, cw)
@@ -272,16 +329,16 @@ export default {
       const bth = info.bh
       let strL = this.w/2-bw/2
       let strT = this.h-bh
-      ctx.fillStyle = this.color.section
+      ctx.fillStyle = ColorInfo.section
       ctx.fillRect(strL, strT, bw, bh)
       let cards = this.store.cards
       for (let i in cards) {
-        ctx.strokeStyle = this.color.obj
+        ctx.strokeStyle = ColorInfo.obj
         let cardL = strL + bw + (i - 5) * cw + (i - 5) * info.sp
         let cardT = strT + info.sp
         ctx.strokeRect(cardL, cardT, cw, cw)
         if (cards[i] === undefined) continue
-        ctx.fillStyle = this.color.cardText
+        ctx.fillStyle = ColorInfo.cardText
         ctx.font = '28px YaHei'
         ctx.textAlign = 'start'
         ctx.fillText(cards[i].name, cardL+14, cardT+36)
@@ -291,16 +348,16 @@ export default {
       }
       // first button
       ctx.textBaseline="top"
-      ctx.fillStyle = this.color.gold
+      ctx.fillStyle = ColorInfo.gold
       ctx.fillText(this.game.gold, strL+sp, strT+sp)
       // second redeal button
       ctx.textAlign = 'end'
-      ctx.fillStyle = this.color.reDealButton
+      ctx.fillStyle = ColorInfo.reDealButton
       ctx.fillRect(strL+sp, strT+sp*2+bth, cw, bth)
       ctx.fillStyle = 'white'
       ctx.fillText(this.game.costRedeal, strL+sp+cw-50, strT+sp*2+bth+40)
       //third upgrade button
-      ctx.fillStyle = this.color.upgradeButton
+      ctx.fillStyle = ColorInfo.upgradeButton
       ctx.fillRect(strL+sp, strT+sp*3+bth*2, cw, bth)
       ctx.fillStyle = 'white'
       ctx.fillText('level'+this.game.lvl, strL+sp+cw-50, strT+sp*3+bth*2+10)

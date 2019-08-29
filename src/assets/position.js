@@ -5,7 +5,10 @@ export default {
         "h": 1100,
         "w1": 110,
         "ratio": Math.sqrt(3) / 2,
-        "w2": 132
+        "w2": 132,
+        'hpW': 120,
+        'hpT': 70,
+        'hpH': 3
     },
     "hand": {
         "marTop": 1300+10,
