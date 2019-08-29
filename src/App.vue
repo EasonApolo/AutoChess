@@ -43,8 +43,6 @@ export default {
       hand: {
         cards: new Array(9).fill(undefined)
       },
-      color: {
-      },
       allsrc: [],
       queue: []
     }
@@ -70,7 +68,7 @@ export default {
     setTimeout(() => {
       console.log('round start')
       this.startRound()
-    }, 10000)
+    }, 4000)
   },
   methods: {
     /*
@@ -177,19 +175,17 @@ export default {
     startRound () {
       this.queue.push(this.checkRemain)
       this.queue.push(this.actAll)
-    },
-    setOppChess () {
-      this.setChess(1, 4, this.createChess(0, 1))
-      this.setChess(0, 5, this.createChess(1, 1))
+      this.initAllChess()
     },
     actAll () {
       let grid = this.board.grid
       for (let i in grid) {
         for (let j in grid[i]) {
           if (grid[i][j] !== undefined) {
-            // if (grid[i][j].status.free) {
-            //   this.findNearestOppo(grid[i][j], i, j)
-            // }
+            if (grid[i][j].status.ready) {
+              let res = this.findNearestOppo(grid[i][j], i, j)
+              console.log(res[0], res[1])
+            }
           }
         }
       }
@@ -207,12 +203,79 @@ export default {
       }
       if (camp0 === 0) {console.log('you lose')}
       else if (camp1 === 0) {console.log('you win')}
+      this.queue.splice(this.queue.indexOf(this.checkRemain), 1)
+    },
+    initAllChess () {
+      let grid = this.board.grid
+      for (let i in grid) {
+        for (let j in grid[i]) {
+          if (grid[i][j] !== undefined) {
+            grid[i][j].status.ready = true
+          }
+        }
+      }
+    },
+    setOppChess () {
+      this.setChess(1, 4, this.createChess(0, 1))
+      this.setChess(0, 5, this.createChess(1, 1))
     },
     /*
       game inline functions
       */
-    findNearestOppo (chess, i, j) {
-
+    getDistance (a, b, c, d) {
+      a=Number(a), b=Number(b), c=Number(c), d=Number(d)
+      let colD = undefined
+      let rowD = Math.abs(a-c)
+      let k = Math.ceil(rowD/2)
+      let u = undefined
+      let l = undefined
+      let dis = undefined
+      if (a%2 === c%2) {
+        u = b+k
+        l = b-k
+      } else if (a%2 === 1) {
+        u = b+k
+        l = b-k+1
+      } else if (c%2 === 1) {
+        u = b+k-1
+        l = b-k
+      }
+      if (d<=u && d>=l) {
+        colD = 0
+      } else if (d>u) {
+        colD = d-u
+      } else if (d<l) {
+        colD = l-d
+      }
+      dis = colD + rowD
+      return dis
+    },
+    findNearestOppo (chess, r, c) {
+      let grid = this.board.grid
+      let minDis = 100
+      let minSet = []
+      let nearest = undefined
+      for (let i in grid) {
+        for (let j in grid[i]) {
+          if (grid[i][j] !== undefined) {
+            if (grid[i][j].camp !== chess.camp) {
+              let dis = this.getDistance(r,c, i,j)
+              if (dis < minDis) {
+                minDis = dis
+                minSet = [[i,j]]
+              } else if (dis == minDis) {
+                minSet.push([i,j])
+              }
+            }
+          }
+        }
+      }
+      if (minSet.length > 1) {
+        nearest = minSet[this.randInt(minSet.length)]
+      } else {
+        nearest = minSet[0]
+      }
+      return [nearest, minDis]
     },
     setGrid (i, j, chess) {
       this.board.grid[i][j] = chess
@@ -245,6 +308,9 @@ export default {
       obj.hold = false         // init hold
       obj.camp = camp
       return obj
+    },
+    randInt (r, s=0) {
+      return Math.floor(Math.random()*r)+s
     },
     /*
       draw functions

@@ -21,5 +21,6 @@ export default [
         ad: 55,
         sp: 0.65,
         range: 3,
+        status: []
     }
 ]
