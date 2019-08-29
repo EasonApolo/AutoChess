@@ -12,6 +12,7 @@ import CardInfo from './assets/card.js'
 import TypeInfo from './assets/type.js'
 import PosInfo from './assets/position.js'
 import ChessInfo from './assets/chess.js'
+import { setTimeout } from 'timers';
 
 export default {
   name: 'app',
@@ -21,6 +22,7 @@ export default {
       ctx: undefined,
       w: 0,
       h: 0,
+      mouse: {x:undefined, y:undefined},
       game: {
         turn: 0,
         gold: 3,
@@ -28,6 +30,7 @@ export default {
         costUpgrade: 4,
         costRedeal: 2
       },
+      hold: undefined,
       board: {
         grid: [[], [], [], [], [], []]
       },
@@ -49,11 +52,15 @@ export default {
     }
   },
   created () {
-    this.w = document.documentElement.clientWidth*2
-    this.h = document.documentElement.clientHeight*2
+    addEventListener('mousemove', e => {
+      this.mouse.x = e.clientX * 2
+      this.mouse.y = e.clientY * 2
+    })
     this.initBoard()
   },
   mounted () {
+    this.w = document.documentElement.clientWidth*2
+    this.h = document.documentElement.clientHeight*2
     this.canvas = document.getElementById('canvas')
     this.ctx = this.canvas.getContext('2d')
     this.deal()
@@ -68,7 +75,12 @@ export default {
       this.drawBoard()
       this.drawHand()
       this.drawStore()
+      this.drawHold()
       window.requestAnimationFrame(this.main);
+      setTimeout(10000, () => {
+        console.log('round start')
+        this.startRound()
+      })
     },
     /*
       init functions
@@ -88,12 +100,33 @@ export default {
       let y = e.clientY*2
       let info = PosInfo.board
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
-        console.log('board')
+        // x,y relative position to board centre
+        let rx = x-this.w/2
+        let ry = y-(info.h/2+info.marTop)
+        let w = info.w1
+        let k = Math.tan(Math.PI/6)
+        let ratio = info.ratio
+        // a,b,c are 3d index
+        let a = Math.floor((ry+k*rx)/w)+8
+        let b = Math.floor((ry-k*rx+w/2)/w)+7
+        let c = Math.floor((rx+ratio/2*w)/(ratio*w))+7
+        // j row index, i col index
+        let j = Math.floor((a+b-7+1)/3)
+        let i = Math.floor((c-(j%2+0.5)+1)/2)
+        // out of grids
+        if (i < 0 || i > 6 || j < 0 || j > 5) return
+        else {
+          this.setChess(j, i)
+        }
       }
       info = PosInfo.hand
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
-        if (x-(this.w/2-info.w/2) % (info.sp+info.w1) < info.sp || (y-info.marTop) % (info.w1+info.sp) < info.sp) return // blank space
-        
+        if ((x-(this.w/2-info.w/2)) % (info.sp+info.w1) < info.sp || (y-info.marTop) % (info.w1+info.sp) < info.sp) return // blank space
+        let index = Math.floor((x-(this.w/2-info.w/2))/(info.sp+info.w1))
+        let cards = this.hand.cards
+        let tmp = this.hold
+        this.hold = cards[index]
+        cards[index] = tmp
       }
       info = PosInfo.store
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>this.h-info.h && y<this.h) {
@@ -136,6 +169,22 @@ export default {
     /*
       game inline functions
       */
+    setOppChess () {
+      
+    },
+    startRound () {
+      this.setOppChess()
+    },
+    setChess (j, i, chess=undefined) {
+      let grid = this.board.grid
+      if (chess === undefined) {
+        let tmp = this.hold
+        this.hold = grid[j][i]
+        grid[j][i] = tmp
+      } else {
+        grid[j][i] = chess
+      }
+    },
     addChess (cardId) {
       let cards = this.hand.cards
       for (let i in cards) {
@@ -157,14 +206,16 @@ export default {
     drawBoard () {
       let ctx = this.ctx
       let info = PosInfo.board
+      let grid = this.board.grid
       const bMarTop = info.marTop
       const bw = info.w
       const bh = info.h
       const gr = info.w1
+      const w2 = info.w2
       const ratio = info.ratio
       ctx.fillStyle = this.color.section
       ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
-      for (let i in this.board.grid) {
+      for (let i in grid) {
         let bias = i % 2 == 1 ? bias = ratio*gr/2 : -ratio*gr/2
         let cenT = bh/2+bMarTop+(i-2.5)*1.5*gr
         for (let j in this.board.grid[i]) {
@@ -179,6 +230,11 @@ export default {
           ctx.closePath()
           ctx.strokeStyle = this.color.obj
           ctx.stroke()
+          if (grid[i][j] !== undefined) {
+            let img = new Image()
+            img.src = grid[i][j].src
+            ctx.drawImage(img, cenL-w2/2, cenT-w2/2, w2, w2)
+          }
         }
       }
     },
@@ -250,6 +306,15 @@ export default {
       ctx.fillText('level'+this.game.lvl, strL+sp+cw-50, strT+sp*3+bth*2+10)
       ctx.fillText(this.game.costUpgrade, strL+sp+cw-50, strT+sp*3+bth*2+40)
     },
+    drawHold () {
+      if (this.hold !== undefined) {
+        let ctx = this.ctx
+        let img = new Image()
+        img.src = this.hold.src
+        let w = PosInfo.hand.w1
+        ctx.drawImage(img, this.mouse.x-w/2, this.mouse.y-w/2, w, w)
+      }
+    }
   }
 }
 </script>
@@ -260,11 +325,13 @@ html {
 }
 body {
   margin: 0;
+  height: 100%;
 }
 #app {
   font-family: 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  height: 100%;
   text-align: center;
   color: #2c3e50;
 }
