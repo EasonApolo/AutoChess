@@ -8,6 +8,7 @@ export default [
         hp: 550,
         ad: 50,
         sp: 0.7,
+        range: 4,
         status: []
     },
     {
@@ -18,6 +19,7 @@ export default [
         src: 'Obama_d.png',
         hp: 550,
         ad: 55,
-        sp: 0.65
+        sp: 0.65,
+        range: 3,
     }
 ]
