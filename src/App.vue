@@ -14,6 +14,7 @@ import PosInfo from './assets/position.js'
 import ChessInfo from './assets/chess.js'
 import ColorInfo from './assets/color.js'
 import { setTimeout } from 'timers'
+import { ThrownUtil} from './assets/util'
 var PF = require('pathfinding')
 
 export default {
@@ -30,7 +31,9 @@ export default {
         gold: 3,
         lvl: 1,
         costUpgrade: 4,
-        costRedeal: 2
+        costRedeal: 2,
+        damageRecord: {},
+        grave: [],
       },
       hold: undefined,
       board: {
@@ -44,7 +47,8 @@ export default {
         cards: new Array(9).fill(undefined)
       },
       allsrc: [],
-      queue: []
+      queue: [],
+      util: [],
     }
   },
   created () {
@@ -64,22 +68,23 @@ export default {
     setTimeout(() => {
       console.log('set opponent')
       this.setOppChess()
-    }, 3000)
+    }, 1000)
     setTimeout(() => {
       console.log('round start')
       this.startRound()
-    }, 4000)
+    }, 2000)
   },
   methods: {
     /*
       main thread
       */
-    main () {
+    main (timestamp) {
       this.clearAll()
       this.drawBoard()
       this.drawHand()
       this.drawStore()
       this.drawHold()
+      this.drawUtil()
       for (let i in this.queue) {
         this.queue[i]()
       }
@@ -182,12 +187,95 @@ export default {
       for (let i in grid) {
         for (let j in grid[i]) {
           if (grid[i][j] !== undefined) {
-            if (grid[i][j].status.ready) {
-              let res = this.findNearestOppo(grid[i][j], i, j)
-              console.log(res[0], res[1])
+            let chess = grid[i][j]
+            if (chess.status.ready) {
+              // res[0] nearest coordinate [r,c], undefined if no nearest
+              // res[1] nearest distance, 100 if no nearest
+              let res = this.findNearestOppo(chess, i, j)
+              let nearestPos = res[0]
+              let nearestDis = res[1]
+              if (nearestPos !== undefined) {
+                if (nearestDis <= chess.range) {
+                  chess.status.ready=false
+                  chess.status.attack=0
+                  chess.status.target=grid[nearestPos[0]][nearestPos[1]]
+                } else {
+                  // when the target move, chess auto move once, and check another best target. So don't fix status.target.
+                  this.moveChess(chess, nearestPos)
+                }
+              }
+            }
+            else if (chess.status.attack >= 0)  {
+              // if target been destroyed (set to undefined)
+              if (chess.status.target === undefined) {
+                chess.status.ready = true
+                chess.status.attack = undefined
+                chess.status.target = undefined
+              } else if (this.getDistance(...chess.pos, ...chess.status.target.pos) > chess.range) {
+                this.moveChess(chess, chess.status.target.pos)  // same, moveOnce, and find other best target
+                chess.status.ready = true
+                chess.status.attack = undefined
+                chess.status.target = undefined
+              } else {
+                let attackTime = 1/chess.as*1000
+                chess.status.attack += 16
+                if (chess.status.attack >= attackTime) {
+                  chess.status.attack = 0
+                  console.log('attack')
+                  this.createThrownUtil(chess, chess.status.target)
+                }
+              }
             }
           }
         }
+      }
+      let util = this.util
+      for (let i in util) {
+        if (util[i].status.prepare) {
+          util[i].act(util[i])
+        } else if (util[i].status.ready) {
+          util[i].effect(util[i])
+        }
+      }
+    },
+    moveChess (chess, target) {
+      console.log('move chess!')
+    },
+    damage (util, chess) {
+      let damage = util.damage  // compute damage here
+      if (util.src.camp === 0) {
+        if (this.damageRecord)
+        this.damageRecord[util.src.id] += damage
+      }
+      chess._hp -= damage
+      if (chess._hp <= 0) {
+        die(chess)
+      }
+    },
+    die (chess) {
+      this.grave.push(chess)
+      let grid = this.board.grid
+      grid[chess.pos[0]][chess.pos[1]] = undefined
+    },
+    ThrownUtilEffect (util) {
+      this.damage(util)
+      this.util.splice(this.util.indexOf(util), 1)
+    },
+    ThrownUtilAct (util) {
+      let [x, y] = util.coord
+      let [tx, ty] = this.getCoord(...util.tgt.pos)
+      if (x === tx && y === ty) {
+        util.status.ready=true
+        util.status.prepare = false
+      }
+      let d = this.getEuclid(x, y, tx, ty)
+      let dsp = util.sp/60/d
+      if (dsp>1) {  // arrive tgt
+        util.coord[0] = tx
+        util.coord[1] = ty
+      } else {
+        util.coord[0] = x + dsp*(tx-x)
+        util.coord[1] = y + dsp*(ty-y)
       }
     },
     checkRemain () {
@@ -205,12 +293,15 @@ export default {
       else if (camp1 === 0) {console.log('you win')}
       this.queue.splice(this.queue.indexOf(this.checkRemain), 1)
     },
+    // initialize all chesses at this round start
     initAllChess () {
       let grid = this.board.grid
       for (let i in grid) {
         for (let j in grid[i]) {
-          if (grid[i][j] !== undefined) {
-            grid[i][j].status.ready = true
+          let g = grid[i][j]
+          if (g !== undefined) {
+            g.status.ready = true
+            g._hp = g.hp
           }
         }
       }
@@ -222,6 +313,15 @@ export default {
     /*
       game inline functions
       */
+    getCoord (r, c) {
+      let w1 = PosInfo.board.w1
+      let x = PosInfo.board.ratio * w1 * 2 * c + (r%2) * w1
+      let y = r*3/2*w1
+      return [x, y]
+    },
+    getEuclid (x1, y1, x2, y2) {
+      return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2))
+    },
     getDistance (a, b, c, d) {
       a=Number(a), b=Number(b), c=Number(c), d=Number(d)
       let colD = undefined
@@ -278,6 +378,9 @@ export default {
       return [nearest, minDis]
     },
     setGrid (i, j, chess) {
+      if (chess !== undefined) {  // if undefined is set to this grid
+        chess.pos = [i, j]
+      }
       this.board.grid[i][j] = chess
       this.board.pfgrid.setWalkableAt(i, j, chess===undefined)
     },
@@ -306,8 +409,22 @@ export default {
     createChess (id, camp) {
       let obj = Object.assign({}, ChessInfo[id])
       obj.hold = false         // init hold
+      obj.pos = undefined
+      obj.status = []
       obj.camp = camp
       return obj
+    },
+    createThrownUtil (src, tgt) {
+      let thrown = Object.assign({}, ThrownUtil)
+      thrown.sp = src.util.sp
+      thrown.tgt = tgt
+      thrown.src = src
+      thrown.damage = src.ad
+      thrown.coord = this.getCoord(...src.pos)
+      thrown.status = {prepare:true}
+      thrown.act = this.ThrownUtilAct
+      thrown.effect = this.ThrownUtilEffect
+      this.util.push(thrown)
     },
     randInt (r, s=0) {
       return Math.floor(Math.random()*r)+s
@@ -318,6 +435,18 @@ export default {
     clearAll () {
       let ctx = this.ctx
       ctx.clearRect(0, 0, this.w, this.h)
+    },
+    drawUtil () {
+      let util = this.util
+      let ctx = this.ctx
+      let info = PosInfo.board
+      let xbase = this.w/2-6.5*info.ratio*info.w1
+      let ybase = info.marTop+info.h/2-3.75*info.w1
+      for (let i in util) {
+        let ut = util[i]
+        ctx.fillStyle = 'blue'
+        ctx.fillRect(xbase+ut.coord[0]-5, ybase+ut.coord[1]-5, 10, 10)
+      }
     },
     drawBoard () {
       let ctx = this.ctx
@@ -353,7 +482,7 @@ export default {
             ctx.drawImage(img, cenL-w2/2, cenT-w2/2, w2, w2)
             // hp
             ctx.fillStyle = ColorInfo.chessHp
-            ctx.fillRect(cenL-info.hpW/2, cenT-info.hpT, chess.hp/chess.hp*info.hpW, info.hpH)
+            ctx.fillRect(cenL-info.hpW/2, cenT-info.hpT, chess._hp/chess.hp*info.hpW, info.hpH)
             // hp border
             // ctx.strokeStyle = ColorInfo.chessHpBorder
             // ctx.strokeRect(cenL-info.hpW/2, cenT-info.hpT, info.hpW, info.hpH)

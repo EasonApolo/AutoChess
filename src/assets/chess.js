@@ -7,9 +7,11 @@ export default [
         src: 'Tristana_d.png',
         hp: 550,
         ad: 50,
-        sp: 0.7,
+        as: 0.7,
         range: 4,
-        status: []
+        util: {
+            sp: 800,
+        }
     },
     {
         id: 1,
@@ -19,8 +21,10 @@ export default [
         src: 'Obama_d.png',
         hp: 550,
         ad: 55,
-        sp: 0.65,
+        as: 0.65,
         range: 3,
-        status: []
+        util: {
+            sp: 1000,
+        }
     }
 ]
