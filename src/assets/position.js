@@ -24,4 +24,10 @@ export default {
         "sp": 20,
         "bh": 220/3
     },
+    "record": {
+        'l': 100,
+        't': 100,
+        'spw':50,
+        'sph':30
+    }
 }

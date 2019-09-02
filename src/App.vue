@@ -32,7 +32,7 @@ export default {
         lvl: 1,
         costUpgrade: 4,
         costRedeal: 2,
-        damageRecord: {},
+        damageRecord: [],
         grave: [],
       },
       hold: undefined,
@@ -72,19 +72,20 @@ export default {
     setTimeout(() => {
       console.log('round start')
       this.startRound()
-    }, 2000)
+    }, 4000)
   },
   methods: {
     /*
       main thread
       */
-    main (timestamp) {
+    main () {
       this.clearAll()
       this.drawBoard()
       this.drawHand()
       this.drawStore()
       this.drawHold()
       this.drawUtil()
+      this.drawDamageRecord()
       for (let i in this.queue) {
         this.queue[i]()
       }
@@ -207,7 +208,7 @@ export default {
             }
             else if (chess.status.attack >= 0)  {
               // if target been destroyed (set to undefined)
-              if (chess.status.target === undefined) {
+              if (chess.status.target !== undefined && chess.status.target.status.dead) {
                 chess.status.ready = true
                 chess.status.attack = undefined
                 chess.status.target = undefined
@@ -241,21 +242,33 @@ export default {
     moveChess (chess, target) {
       console.log('move chess!')
     },
-    damage (util, chess) {
+    damage (util) {
       let damage = util.damage  // compute damage here
+      let record = this.game.damageRecord
+      console.log(util.src.camp)
       if (util.src.camp === 0) {
-        if (this.damageRecord)
-        this.damageRecord[util.src.id] += damage
+        let pair = record.find(x => {return x.id === util.src.id})
+        if (pair) {
+          pair.val += damage
+        } else {
+          record.push({id: util.src.id, val: damage})
+        }
+        record.sort((a,b) => {a.val < b.val})
       }
-      chess._hp -= damage
-      if (chess._hp <= 0) {
-        die(chess)
+      util.tgt._hp -= damage
+      if (util.tgt._hp <= 0) {
+        this.die(util.tgt)
       }
     },
     die (chess) {
-      this.grave.push(chess)
+      // remove chess from board
       let grid = this.board.grid
       grid[chess.pos[0]][chess.pos[1]] = undefined
+      // set chess status as dead, so other chess and util will remove it.
+      for (let i in chess.status) {
+        chess.status[i] = undefined
+      }
+      chess.status.dead = true
     },
     ThrownUtilEffect (util) {
       this.damage(util)
@@ -410,7 +423,7 @@ export default {
       let obj = Object.assign({}, ChessInfo[id])
       obj.hold = false         // init hold
       obj.pos = undefined
-      obj.status = []
+      obj.status = {}
       obj.camp = camp
       return obj
     },
@@ -565,6 +578,16 @@ export default {
         img.src = this.hold.src
         let w = PosInfo.hand.w1
         ctx.drawImage(img, this.mouse.x-w/2, this.mouse.y-w/2, w, w)
+      }
+    },
+    drawDamageRecord () {
+      let ctx = this.ctx
+      let info = PosInfo.record
+      let record = this.game.damageRecord
+      ctx.fillStyle = 'green'
+      for (let i in record) {
+        ctx.fillText(ChessInfo[record[i].id].name, info.l, info.t+i*info.sph)
+        ctx.fillText(record[i].val, info.l+info.spw, info.t+i*info.sph)
       }
     }
   }
