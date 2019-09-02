@@ -239,8 +239,21 @@ export default {
         }
       }
     },
-    moveChess (chess, target) {
-      console.log('move chess!')
+    moveChess (chess, finalTarget) {
+      let path = this.getPath(chess, finalTarget)
+      if (path === undefined) {
+        console.log(chess.pos, 'cannot move')
+        return
+      }
+      console.log(chess.pos, path)
+      let tgt = path[0]
+      let grid = this.board.grid
+      if (grid[tgt[0]][tgt[1]] === undefined) {// for ensurance, tgt should be undefined as it's selected by path-finding func.
+        grid[chess.pos[0]][chess.pos[1]] = undefined
+        grid[tgt[0]][tgt[1]] = chess
+        chess.pos = tgt
+        chess.status
+      }
     },
     damage (util) {
       let damage = util.damage  // compute damage here
@@ -253,7 +266,7 @@ export default {
         } else {
           record.push({id: util.src.id, val: damage})
         }
-        record.sort((a,b) => {a.val < b.val})
+        record.sort((a,b) => {a.val > b.val})
       }
       util.tgt._hp -= damage
       if (util.tgt._hp <= 0) {
@@ -320,12 +333,75 @@ export default {
       }
     },
     setOppChess () {
-      this.setChess(1, 4, this.createChess(0, 1))
-      this.setChess(0, 5, this.createChess(1, 1))
+      this.setChess(0, 2, this.createChess(0, 1))
+      this.setChess(1, 2, this.createChess(0, 1))
+      this.setChess(1, 3, this.createChess(0, 1))
+      this.setChess(2, 4, this.createChess(0, 1))
+      this.setChess(2, 5, this.createChess(0, 1))
+      this.setChess(0, 4, this.createChess(1, 1))
     },
     /*
       game inline functions
       */
+    samePos(a, b) {
+      return a[0] === b[0] && a[1] === b[1]
+    },
+    getPathNode (now, tgt, open, close) {
+      // if now in open, move it to close
+      let nowIndex = open.indexOf(now)
+      if (nowIndex !== -1) {
+        open.splice(nowIndex, 1)
+      }
+      close.push(now)
+      // get six adjacent, test if each is OK, add OK to ablePos and global open, compute OK distance
+      let sixPos = this.getSixPos(now)
+      let avails = []
+      for (let i in sixPos) {
+        let pos = sixPos[i]
+        if (this.samePos(tgt, pos)) return [pos]
+        if (this.board.grid[pos[0]][pos[1]] !== undefined) {
+          continue
+        }
+        let flag = false
+        let closeOpen = close.concat(open)
+        for (let j in closeOpen) {
+          if (this.samePos(closeOpen[j], pos)) {flag = true; break}
+        }
+        if (flag) continue
+        open.push(pos)
+        avails.push({pos: pos, d:this.getDistance(...pos,...tgt)})
+      }
+      if (avails.length === 0) {
+        return undefined
+      }
+      // sort and search begin with smallest d
+      avails.sort((a,b)=>a.d-b.d)
+      for (let i in avails) {
+        let res = this.getPathNode(avails[i].pos, tgt, open, close)
+        if (res) {
+          res.unshift(avails[i].pos)  // unshift only return new-length
+          return res
+        }
+      }
+    },
+    getPath (chess, target) {
+      let tgt = [Number(target[0]), Number(target[1])]
+      let open = []
+      let close = []
+      return this.getPathNode(chess.pos, tgt, open, close)
+    },
+    getSixPos(cen) {
+      let dir = cen[0]%2===1 ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]] : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
+      let sixPos = []
+      for (let i in dir) {
+        let v = dir[i]
+        let r = cen[0]+v[0]
+        let c = cen[1]+v[1]
+        if (r<0||r>5||c<0||c>6) continue
+        sixPos.push([r,c])
+      }
+      return sixPos
+    },
     getCoord (r, c) {
       let w1 = PosInfo.board.w1
       let x = PosInfo.board.ratio * w1 * 2 * c + (r%2) * w1

@@ -6,7 +6,7 @@ export default [
         cat: [0, 1],
         src: 'Tristana_d.png',
         hp: 550,
-        ad: 50,
+        ad: 1,
         as: 0.7,
         range: 4,
         util: {
@@ -20,7 +20,7 @@ export default [
         cat: [0, 2],
         src: 'Obama_d.png',
         hp: 550,
-        ad: 55,
+        ad: 2,
         as: 0.65,
         range: 3,
         util: {
