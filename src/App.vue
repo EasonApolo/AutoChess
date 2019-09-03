@@ -245,7 +245,6 @@ export default {
         console.log(chess.pos, 'cannot move')
         return
       }
-      console.log(chess.pos, path)
       let tgt = path[0]
       let grid = this.board.grid
       if (grid[tgt[0]][tgt[1]] === undefined) {// for ensurance, tgt should be undefined as it's selected by path-finding func.
@@ -258,7 +257,6 @@ export default {
     damage (util) {
       let damage = util.damage  // compute damage here
       let record = this.game.damageRecord
-      console.log(util.src.camp)
       if (util.src.camp === 0) {
         let pair = record.find(x => {return x.id === util.src.id})
         if (pair) {
@@ -376,13 +374,33 @@ export default {
       }
       // sort and search begin with smallest d
       avails.sort((a,b)=>a.d-b.d)
+      let paths = []
+      let minD = -1                     // nextNode with same weight should all been tested
       for (let i in avails) {
+        if (avails[i].d !== minD) {
+          minD = avails[i].d
+          if (paths.length > 0) {
+            return this.getShortestPath(paths)
+          }
+        }
         let res = this.getPathNode(avails[i].pos, tgt, open, close)
         if (res) {
-          res.unshift(avails[i].pos)  // unshift only return new-length
-          return res
+          res.unshift(avails[i].pos)    // unshift only return new-length
+          paths.push(res)               // save result path
         }
       }
+      if (paths.length > 0) return this.getShortestPath(paths)
+    },
+    getShortestPath (paths) {
+      let minLen = 100
+      let minInd = -1
+      for (let j in paths) {
+        if (paths[j].length < minLen) {
+          minLen = paths[j].length
+          minInd = j
+        }
+      }
+      return paths[minInd]
     },
     getPath (chess, target) {
       let tgt = [Number(target[0]), Number(target[1])]
@@ -685,5 +703,11 @@ body {
   height: 100%;
   text-align: center;
   color: #2c3e50;
+}
+#canvas {
+  opacity: 0;
+  &:hover {
+    opacity: 1;
+  }
 }
 </style>
