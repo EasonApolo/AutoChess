@@ -59,6 +59,9 @@ export default {
     this.initBoard()
   },
   mounted () {
+    console.log(this.getOrient(0,0,1,0))
+    console.log(this.getOrient(1,1,0,2))
+    console.log(this.getOrient(1,1,1,2))
     this.w = document.documentElement.clientWidth*2
     this.h = document.documentElement.clientHeight*2
     this.canvas = document.getElementById('canvas')
@@ -201,8 +204,11 @@ export default {
                   chess.status.attack=0
                   chess.status.target=grid[nearestPos[0]][nearestPos[1]]
                 } else {
-                  // when the target move, chess auto move once, and check another best target. So don't fix status.target.
-                  this.moveChess(chess, nearestPos)
+                  // if target out of range, chess moves toward it for one step, then check best target again. So, no need to fix any target.
+                  if (this.moveChess(chess, nearestPos)) {
+                    chess.status.ready=false
+                    chess.status.move = 0
+                  }
                 }
               }
             }
@@ -227,6 +233,13 @@ export default {
                 }
               }
             }
+            else if (chess.status.move >= 0) {
+              chess.status.move ++
+              if (chess.status.move >= chess.sp) {
+                chess.status.move = undefined
+                chess.status.ready = true
+              }
+            }
           }
         }
       }
@@ -239,21 +252,21 @@ export default {
         }
       }
     },
+    // if chess cannot move, return false
     moveChess (chess, finalTarget) {
       let path = this.getPath(chess, finalTarget)
-      console.log(chess.pos, path)
       if (path === undefined) {
-        console.log(chess.pos, 'cannot move')
-        return
+        return false
       }
       let tgt = path[0]
       let grid = this.board.grid
       if (grid[tgt[0]][tgt[1]] === undefined) {// for ensurance, tgt should be undefined as it's selected by path-finding func.
+        chess.orient = this.getOrient(...chess.pos, ...tgt)
         grid[chess.pos[0]][chess.pos[1]] = undefined
         grid[tgt[0]][tgt[1]] = chess
         chess.pos = tgt
-        chess.status
       }
+      return true
     },
     damage (util) {
       let damage = util.damage  // compute damage here
@@ -326,6 +339,7 @@ export default {
           let g = grid[i][j]
           if (g !== undefined) {
             g.status.ready = true
+            g.orient = 0
             g._hp = g.hp
           }
         }
@@ -342,7 +356,27 @@ export default {
     /*
       game inline functions
       */
-    samePos(a, b) {
+    // orient start: top-left 0
+    getOrient (r1,c1, r2,c2) {
+      if (r1===r2) {
+        return c1<c2?2:5
+      } else {
+        if (r1%2==1) {
+          if (r2<r1) {
+            return c1===c2?0:1
+          } else {
+            return c1===c2?4:3
+          }
+        } else {
+          if (r2<r1) {
+            return c1===c2?1:0
+          } else {
+            return c1===c2?3:4
+          }
+        }
+      }
+    },
+    samePos (a, b) {
       return a[0] === b[0] && a[1] === b[1]
     },
     getPathNode (now, tgt, open, close, flag) {
@@ -558,21 +592,21 @@ export default {
       const bMarTop = info.marTop
       const bw = info.w
       const bh = info.h
-      const gr = info.w1
+      const w1 = info.w1
       const w2 = info.w2
       const ratio = info.ratio
       ctx.fillStyle = ColorInfo.section
       ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
       for (let i in grid) {
-        let bias = i % 2 == 1 ? bias = ratio*gr/2 : -ratio*gr/2
-        let cenT = bh/2+bMarTop+(i-2.5)*1.5*gr
+        let bias = i % 2 == 1 ? bias = ratio*w1/2 : -ratio*w1/2
+        let cenT = bh/2+bMarTop+(i-2.5)*1.5*w1
         for (let j in this.board.grid[i]) {
-          let cenL = this.w/2+(j-3)*ratio*2*gr+bias
+          let cenL = this.w/2+(j-3)*ratio*2*w1+bias
           ctx.beginPath()
           for (let k =0; k < 6; k++) {
             let rad = Math.PI*(1/3*k-1/6)
-            let x = Math.cos(rad) * gr
-            let y = Math.sin(rad) * gr
+            let x = Math.cos(rad) * w1
+            let y = Math.sin(rad) * w1
             this.ctx.lineTo(cenL+x, cenT+y)
           }
           ctx.closePath()
@@ -580,12 +614,19 @@ export default {
           ctx.stroke()
           let chess = grid[i][j]
           if (chess !== undefined) {
+            let biasX=0, biasY=0
+            if (chess.status.move >= 0) {
+              let rad = (5-chess.orient)*Math.PI/3
+              let biasD = ratio*2*w1*(1-chess.status.move)/chess.sp
+              biasX = -biasD * Math.cos(rad)
+              biasY = biasD * Math.sin(rad)
+            }
             let img = new Image()
             img.src = chess.src
-            ctx.drawImage(img, cenL-w2/2, cenT-w2/2, w2, w2)
+            ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
             // hp
             ctx.fillStyle = ColorInfo.chessHp
-            ctx.fillRect(cenL-info.hpW/2, cenT-info.hpT, chess._hp/chess.hp*info.hpW, info.hpH)
+            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
             // hp border
             // ctx.strokeStyle = ColorInfo.chessHpBorder
             // ctx.strokeRect(cenL-info.hpW/2, cenT-info.hpT, info.hpW, info.hpH)

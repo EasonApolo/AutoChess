@@ -3,9 +3,9 @@ export default {
         "marTop": 200,
         "w": 1500,
         "h": 1100,
-        "w1": 110,
+        "w1": 110,  // radius of grid
         "ratio": Math.sqrt(3) / 2,
-        "w2": 132,
+        "w2": 132,  // width of chess image
         'hpW': 120,
         'hpT': 70,
         'hpH': 3
