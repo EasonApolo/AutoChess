@@ -241,6 +241,7 @@ export default {
     },
     moveChess (chess, finalTarget) {
       let path = this.getPath(chess, finalTarget)
+      console.log(chess.pos, path)
       if (path === undefined) {
         console.log(chess.pos, 'cannot move')
         return
@@ -344,12 +345,8 @@ export default {
     samePos(a, b) {
       return a[0] === b[0] && a[1] === b[1]
     },
-    getPathNode (now, tgt, open, close) {
-      // if now in open, move it to close
-      let nowIndex = open.indexOf(now)
-      if (nowIndex !== -1) {
-        open.splice(nowIndex, 1)
-      }
+    getPathNode (now, tgt, open, close, flag) {
+      if (flag) console.log(now)
       close.push(now)
       // get six adjacent, test if each is OK, add OK to ablePos and global open, compute OK distance
       let sixPos = this.getSixPos(now)
@@ -361,12 +358,10 @@ export default {
           continue
         }
         let flag = false
-        let closeOpen = close.concat(open)
-        for (let j in closeOpen) {
-          if (this.samePos(closeOpen[j], pos)) {flag = true; break}
+        for (let j in close) {
+          if (this.samePos(close[j], pos)) {flag = true; break}
         }
         if (flag) continue
-        open.push(pos)
         avails.push({pos: pos, d:this.getDistance(...pos,...tgt)})
       }
       if (avails.length === 0) {
@@ -383,7 +378,7 @@ export default {
             return this.getShortestPath(paths)
           }
         }
-        let res = this.getPathNode(avails[i].pos, tgt, open, close)
+        let res = this.getPathNode(avails[i].pos, tgt, open, close, flag)
         if (res) {
           res.unshift(avails[i].pos)    // unshift only return new-length
           paths.push(res)               // save result path
@@ -406,7 +401,8 @@ export default {
       let tgt = [Number(target[0]), Number(target[1])]
       let open = []
       let close = []
-      return this.getPathNode(chess.pos, tgt, open, close)
+      let flag = this.samePos(chess.pos, [2,3]) ? true : false
+      return this.getPathNode(chess.pos, tgt, open, close, flag)
     },
     getSixPos(cen) {
       let dir = cen[0]%2===1 ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]] : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
