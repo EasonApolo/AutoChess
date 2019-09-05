@@ -617,19 +617,18 @@ export default {
             let biasX=0, biasY=0
             if (chess.status.move >= 0) {
               let rad = (5-chess.orient)*Math.PI/3
-              let biasD = ratio*2*w1*(1-chess.status.move)/chess.sp
-              biasX = -biasD * Math.cos(rad)
-              biasY = biasD * Math.sin(rad)
+              let biasD = ratio*2*w1*(1-chess.status.move/chess.sp)
+              biasX = biasD * Math.cos(rad)
+              biasY = -biasD * Math.sin(rad)
             }
             let img = new Image()
             img.src = chess.src
             ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
             // hp
             ctx.fillStyle = ColorInfo.chessHp
+            ctx.fillText(chess.orient, cenL-w2/2+biasX, cenT-w2/2+biasY)
+            ctx.fillStyle = ColorInfo.chessHp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
-            // hp border
-            // ctx.strokeStyle = ColorInfo.chessHpBorder
-            // ctx.strokeRect(cenL-info.hpW/2, cenT-info.hpT, info.hpW, info.hpH)
           }
         }
       }
