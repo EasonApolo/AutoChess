@@ -40,7 +40,6 @@ export default [
 ]
 export function regainMana (type, ...args) {
     if (['damage', 'attack'].includes(type)) {
-        // val
         if (type === 'damage') {
             let val = args[0]
             let util = args[1]
@@ -49,6 +48,8 @@ export function regainMana (type, ...args) {
         } else if (type === 'attack') {
             this._mp += randInt(5, 6)
         }
+        // prevent overflow
+        if (this._mp >= this.mp) this._mp = this.mp
     }
 }
 export function randInt (r, s=0) {
