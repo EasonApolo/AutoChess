@@ -8,7 +8,8 @@ export default {
         "w2": 132,  // width of chess image
         'hpW': 120,
         'hpT': 70,
-        'hpH': 3
+        'hpH': 3,
+        'mpT': 65,
     },
     "hand": {
         "marTop": 1300+10,

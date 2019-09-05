@@ -59,9 +59,6 @@ export default {
     this.initBoard()
   },
   mounted () {
-    console.log(this.getOrient(0,0,1,0))
-    console.log(this.getOrient(1,1,0,2))
-    console.log(this.getOrient(1,1,1,2))
     this.w = document.documentElement.clientWidth*2
     this.h = document.documentElement.clientHeight*2
     this.canvas = document.getElementById('canvas')
@@ -228,7 +225,7 @@ export default {
                 chess.status.attack += 16
                 if (chess.status.attack >= attackTime) {
                   chess.status.attack = 0
-                  console.log('attack')
+                  this.dealBuff('attack', chess)
                   this.createThrownUtil(chess, chess.status.target)
                 }
               }
@@ -269,7 +266,9 @@ export default {
       return true
     },
     damage (util) {
-      let damage = util.damage  // compute damage here
+      // compute mitigated damage
+      let damage = util.damage
+      // add damage to record
       let record = this.game.damageRecord
       if (util.src.camp === 0) {
         let pair = record.find(x => {return x.id === util.src.id})
@@ -280,9 +279,26 @@ export default {
         }
         record.sort((a,b) => {a.val > b.val})
       }
+      // deal damage
       util.tgt._hp -= damage
+      // deal buffs
+      this.dealBuff('damage', util.tgt, util.damage, util)  // use pre-mitigated damage
+      // check vital status
       if (util.tgt._hp <= 0) {
         this.die(util.tgt)
+      }
+    },
+    dealBuff (type, ...args) {
+      if (type === 'damage') {
+        let [chess, val, util] = args
+        for (let i in chess.buff) {
+          chess.buff[i].bind(chess, type, val, util)()
+        }
+      } else if (type === 'attack') {
+        let [chess] = args
+        for (let i in chess.buff) {
+          chess.buff[i].bind(chess, type)()
+        }
       }
     },
     die (chess) {
@@ -341,6 +357,9 @@ export default {
             g.status.ready = true
             g.orient = 0
             g._hp = g.hp
+            g._mp = 0
+            if (!g.buff) g.buff = []
+
           }
         }
       }
@@ -626,9 +645,9 @@ export default {
             ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
             // hp
             ctx.fillStyle = ColorInfo.chessHp
-            ctx.fillText(chess.orient, cenL-w2/2+biasX, cenT-w2/2+biasY)
-            ctx.fillStyle = ColorInfo.chessHp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
+            ctx.fillStyle = ColorInfo.chessMp
+            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess._mp/chess.mp*info.hpW, info.hpH)
           }
         }
       }
