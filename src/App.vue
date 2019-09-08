@@ -11,7 +11,7 @@
 import CardInfo from './assets/card.js'
 import TypeInfo from './assets/type.js'
 import PosInfo from './assets/position.js'
-import ChessInfo from './assets/chess.js'
+import ChessInfo, { buff_regainMana } from './assets/chess.js'
 import ColorInfo from './assets/color.js'
 import { setTimeout } from 'timers'
 import { ThrownUtil} from './assets/util'
@@ -228,6 +228,9 @@ export default {
                   chess.status.attack = 0
                   this.dealBuff('attack', chess)
                   this.createThrownUtil(chess, chess.status.target)
+                  if (chess._mp >= chess.mp) {
+                    this.castSpell(chess)
+                  }
                 }
               }
             }
@@ -267,7 +270,14 @@ export default {
       }
       return true
     },
-    damage (util) {
+    castSpell (chess) {
+      if (chess.spell) {
+        chess.spell()
+        chess._mp = 0
+      }
+    },
+    damage (util, tgt=undefined) {
+      if (!tgt) tgt = util.tgt
       // compute mitigated damage
       let damage = util.damage
       // add damage to record
@@ -282,24 +292,24 @@ export default {
         record.sort((a,b) => {a.val < b.val})
       }
       // deal damage
-      util.tgt._hp -= damage
+      tgt._hp -= damage
       // deal buffs
-      this.dealBuff('damage', util.tgt, util.damage, util)  // use pre-mitigated damage
+      this.dealBuff('damage', tgt, util.damage, util)  // use pre-mitigated damage
       // check vital status
-      if (util.tgt._hp <= 0) {
-        this.die(util.tgt)
+      if (tgt._hp <= 0) {
+        this.die(tgt)
       }
     },
     dealBuff (type, ...args) {
       if (type === 'damage') {
         let [chess, val, util] = args
         for (let i in chess.buff) {
-          chess.buff[i].bind(chess, type, val, util)()
+          chess.buff[i].response(this, type, val, util)
         }
       } else if (type === 'attack') {
         let [chess] = args
         for (let i in chess.buff) {
-          chess.buff[i].bind(chess, type)()
+          chess.buff[i].response(this, type)
         }
       }
     },
@@ -359,9 +369,11 @@ export default {
             g.status.ready = true
             g.orient = 0
             g._hp = g.hp
-            g._mp = 0
-            if (!g.buff) g.buff = []
-
+            if (g.mp) {
+              g._mp = 0
+              if (!g.buff) g.buff = []
+              g.buff.push(new buff_regainMana(g))
+            }
           }
         }
       }
@@ -400,8 +412,8 @@ export default {
     samePos (a, b) {
       return a[0] === b[0] && a[1] === b[1]
     },
-    getPathNode (now, tgt, open, close, flag) {
-      if (flag) console.log(now)
+    getPathNode (now, tgt, open, close, displayflag) {
+      if (displayflag) console.log(now)
       close.push(now)
       // get six adjacent, test if each is OK, add OK to ablePos and global open, compute OK distance
       let sixPos = this.getSixPos(now)
@@ -430,16 +442,20 @@ export default {
         if (avails[i].d !== minD) {
           minD = avails[i].d
           if (paths.length > 0) {
-            return this.getShortestPath(paths)
+            break
           }
         }
-        let res = this.getPathNode(avails[i].pos, tgt, open, close, flag)
+        let res = this.getPathNode(avails[i].pos, tgt, open, close.slice(), displayflag)
         if (res) {
           res.unshift(avails[i].pos)    // unshift only return new-length
           paths.push(res)               // save result path
         }
       }
-      if (paths.length > 0) return this.getShortestPath(paths)
+      if (paths.length > 0) {
+        let ret_path = this.getShortestPath(paths)
+        return ret_path
+      }
+      else return undefined
     },
     getShortestPath (paths) {
       let minLen = 100
@@ -456,7 +472,7 @@ export default {
       let tgt = [Number(target[0]), Number(target[1])]
       let open = []
       let close = []
-      let flag = this.samePos(chess.pos, [2,3]) ? true : false
+      let flag = this.samePos(chess.pos, [-1,-1]) ? true : false
       return this.getPathNode(chess.pos, tgt, open, close, flag)
     },
     getSixPos(cen) {
@@ -566,7 +582,7 @@ export default {
       }
     },
     createChess (id, camp) {
-      let obj = Object.assign({}, ChessInfo[id])
+      let obj = new ChessInfo[id]()
       obj.hold = false         // init hold
       obj.pos = undefined
       obj.status = {}
@@ -574,7 +590,7 @@ export default {
       return obj
     },
     createThrownUtil (src, tgt) {
-      let thrown = Object.assign({}, ThrownUtil)
+      let thrown = JSON.parse(JSON.stringify(ThrownUtil))
       thrown.sp = src.util.sp
       thrown.tgt = tgt
       thrown.src = src
@@ -643,14 +659,21 @@ export default {
               biasX = biasD * Math.cos(rad)
               biasY = -biasD * Math.sin(rad)
             }
+            // img
             let img = new Image()
             img.src = chess.src
             ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
-            // hp
+            // hp mp
             ctx.fillStyle = ColorInfo.chessHp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
             ctx.fillStyle = ColorInfo.chessMp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess._mp/chess.mp*info.hpW, info.hpH)
+            // buff
+            for (let i in chess.buff) {
+              if (chess.buff[i].draw) {
+                chess.buff[i].draw(ctx, cenL+biasX, cenT+biasY)
+              }
+            }
           }
         }
       }
