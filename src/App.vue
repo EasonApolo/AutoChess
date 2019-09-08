@@ -216,8 +216,9 @@ export default {
                 chess.status.attack = undefined
                 chess.status.target = undefined
               } else if (this.getDistance(...chess.pos, ...chess.status.target.pos) > chess.range) {
-                this.moveChess(chess, chess.status.target.pos)  // same, moveOnce, and find other best target
-                chess.status.ready = true
+                if (this.moveChess(chess, chess.status.target.pos)) {
+                  chess.status.move = 0
+                }  // same, moveOnce, and find other best target
                 chess.status.attack = undefined
                 chess.status.target = undefined
               } else {
@@ -262,6 +263,7 @@ export default {
         grid[chess.pos[0]][chess.pos[1]] = undefined
         grid[tgt[0]][tgt[1]] = chess
         chess.pos = tgt
+        chess.status.move = true
       }
       return true
     },
@@ -277,7 +279,7 @@ export default {
         } else {
           record.push({id: util.src.id, val: damage})
         }
-        record.sort((a,b) => {a.val > b.val})
+        record.sort((a,b) => {a.val < b.val})
       }
       // deal damage
       util.tgt._hp -= damage
@@ -541,6 +543,7 @@ export default {
       this.board.pfgrid.setWalkableAt(i, j, chess===undefined)
     },
     setChess (j, i, chess=undefined) {
+      console.log(j, i)
       let grid = this.board.grid
       // camp=0 friend, camp=1 opponent
       if (chess === undefined) {  // swap hold and grid[i][j]
@@ -759,10 +762,10 @@ body {
   text-align: center;
   color: #2c3e50;
 }
-#canvas {
-  opacity: 0;
-  &:hover {
-    opacity: 1;
-  }
-}
+// #canvas {
+//   opacity: 0;
+//   &:hover {
+//     opacity: 1;
+//   }
+// }
 </style>
