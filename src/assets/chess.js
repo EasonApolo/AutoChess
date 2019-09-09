@@ -103,6 +103,27 @@ export default [
             this.lvl = 0
             this.buff = [
             ]
+            this.spell = function slipper (vm) {
+                if (this.status.target) {
+                    let grid = vm.board.grid
+                    let avails = []
+                    for (let r in grid) {
+                        for (let c in grid[r]) {
+                            if (grid[r][c] === undefined && vm.getDistance([r,c], this.pos) <= 2 && vm.getDistance([r,c],this.status.target.pos) <= this.range) {
+                                avails.push([r,c])
+                            }
+                        }
+                    }
+                    if (avails.length) {
+                        this.status.jump = {p:0, pn: 30, tgt: randInt(avails.length)}
+                        this.status.ready = false
+                        this.status.attack = 0
+                        this.buff.push(new buff_obama_nextAttackWith(this, this.status.target))
+                    } else {    // no available jump position
+                        return false
+                    }
+                }
+            }
         }
     }
 ]

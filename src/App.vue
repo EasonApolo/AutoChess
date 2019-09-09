@@ -241,6 +241,15 @@ export default {
                 chess.status.ready = true
               }
             }
+            else if (chess.status.jump) {
+              if (chess.status.jump.p >= chess.status.jump.pn) {
+                chess.status.jump = undefined
+                if (chess.status.target) {
+                  chess.attack = 0
+                }
+              }
+              chess.status.jump ++
+            }
           }
         }
       }
@@ -785,10 +794,10 @@ body {
   text-align: center;
   color: #2c3e50;
 }
-// #canvas {
-//   opacity: 0;
-//   &:hover {
-//     opacity: 1;
-//   }
-// }
+#canvas {
+  opacity: 0;
+  &:hover {
+    opacity: 1;
+  }
+}
 </style>
