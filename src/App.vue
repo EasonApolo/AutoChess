@@ -16,7 +16,6 @@ import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize } from './assets/helper'
-import { nearer } from 'q';
 var PF = require('pathfinding')
 
 export default {
@@ -372,9 +371,6 @@ export default {
     setOppChess () {
       this.setChess(0, 2, this.createChess(0, 1))
       this.setChess(1, 2, this.createChess(0, 1))
-      // this.setChess(1, 3, this.createChess(0, 1))
-      // this.setChess(2, 4, this.createChess(0, 1))
-      // this.setChess(2, 5, this.createChess(0, 1))
       this.setChess(0, 4, this.createChess(1, 1))
     },
     /*
@@ -654,7 +650,7 @@ export default {
             img.src = chess.src
             ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
             // hp mp
-            ctx.fillStyle = ColorInfo.chessHp
+            ctx.fillStyle = chess.camp===0 ? ColorInfo.chessHp:ColorInfo.chessHpOppo
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
             ctx.fillStyle = ColorInfo.chessMp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess._mp/chess.mp*info.hpW, info.hpH)

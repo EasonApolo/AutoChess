@@ -6,6 +6,7 @@ export default {
     upgradeButton: 'rgb(99, 99, 199)',
     gold: '#ffd700',
     chessHpBorder: 'rgb(66,66,66)',
-    chessHp: 'red',
+    chessHp: '#eebc29',
+    chessHpOppo: 'red',
     chessMp: 'blue',
 }
