@@ -8,13 +8,15 @@
 </template>
 
 <script>
-import CardInfo from './assets/card.js'
-import TypeInfo from './assets/type.js'
-import PosInfo from './assets/position.js'
-import ChessInfo, { buff_regainMana } from './assets/chess.js'
-import ColorInfo from './assets/color.js'
+import CardInfo from './assets/card'
+import TypeInfo from './assets/type'
+import PosInfo from './assets/position'
+import ChessInfo, { buff_regainMana } from './assets/chess'
+import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
-import { ThrownUtil} from './assets/util'
+import { util_tgt, util_attack} from './assets/util'
+import { randInt, removeFromArr, numberize } from './assets/helper'
+import { nearer } from 'q';
 var PF = require('pathfinding')
 
 export default {
@@ -197,13 +199,13 @@ export default {
               let nearestDis = res[1]
               if (nearestPos !== undefined) {
                 if (nearestDis <= chess.range) {
-                  chess.status.ready=false
+                  chess.status.ready=undefined
                   chess.status.attack=0
                   chess.status.target=grid[nearestPos[0]][nearestPos[1]]
                 } else {
                   // if target out of range, chess moves toward it for one step, then check best target again. So, no need to fix any target.
                   if (this.moveChess(chess, nearestPos)) {
-                    chess.status.ready=false
+                    chess.status.ready=undefined
                     chess.status.move = 0
                   }
                 }
@@ -227,7 +229,7 @@ export default {
                 if (chess.status.attack >= attackTime) {
                   chess.status.attack = 0
                   this.dealBuff('attack', chess)
-                  this.createThrownUtil(chess, chess.status.target)
+                  this.createUtilAttack(chess, chess.status.target)
                   if (chess._mp >= chess.mp) {
                     this.castSpell(chess)
                   }
@@ -242,13 +244,24 @@ export default {
               }
             }
             else if (chess.status.jump) {
-              if (chess.status.jump.p >= chess.status.jump.pn) {
+              let jump = chess.status.jump
+              if (jump.p === 0) {
+                if (grid[jump.tgt[0]][jump.tgt[1]] === undefined) {
+                  grid[chess.pos[0]][chess.pos[1]] = undefined
+                  grid[jump.tgt[0]][jump.tgt[1]] = chess
+                  chess.pos = jump.tgt
+                }
+                jump.p ++
+              }
+              else if (jump.p >= jump.pn) {
                 chess.status.jump = undefined
                 if (chess.status.target) {
-                  chess.attack = 0
+                  chess.status.attack = 0
                 }
               }
-              chess.status.jump ++
+              else {
+                jump.p ++
+              }
             }
           }
         }
@@ -256,9 +269,9 @@ export default {
       let util = this.util
       for (let i in util) {
         if (util[i].status.prepare) {
-          util[i].act(util[i])
+          util[i].act()
         } else if (util[i].status.ready) {
-          util[i].effect(util[i])
+          util[i].effect()
         }
       }
     },
@@ -306,51 +319,20 @@ export default {
       this.dealBuff('damage', tgt, util.damage, util)  // use pre-mitigated damage
       // check vital status
       if (tgt._hp <= 0) {
-        this.die(tgt)
+        tgt.die()
       }
     },
     dealBuff (type, ...args) {
       if (type === 'damage') {
         let [chess, val, util] = args
         for (let i in chess.buff) {
-          chess.buff[i].response(this, type, val, util)
+          chess.buff[i].response(type, val, util)
         }
       } else if (type === 'attack') {
         let [chess] = args
         for (let i in chess.buff) {
-          chess.buff[i].response(this, type)
+          chess.buff[i].response(type)
         }
-      }
-    },
-    die (chess) {
-      // remove chess from board
-      let grid = this.board.grid
-      grid[chess.pos[0]][chess.pos[1]] = undefined
-      // set chess status as dead, so other chess and util will remove it.
-      for (let i in chess.status) {
-        chess.status[i] = undefined
-      }
-      chess.status.dead = true
-    },
-    ThrownUtilEffect (util) {
-      this.damage(util)
-      this.util.splice(this.util.indexOf(util), 1)
-    },
-    ThrownUtilAct (util) {
-      let [x, y] = util.coord
-      let [tx, ty] = this.getCoord(...util.tgt.pos)
-      if (x === tx && y === ty) {
-        util.status.ready=true
-        util.status.prepare = false
-      }
-      let d = this.getEuclid(x, y, tx, ty)
-      let dsp = util.sp/60/d
-      if (dsp>1) {  // arrive tgt
-        util.coord[0] = tx
-        util.coord[1] = ty
-      } else {
-        util.coord[0] = x + dsp*(tx-x)
-        util.coord[1] = y + dsp*(ty-y)
       }
     },
     checkRemain () {
@@ -366,7 +348,7 @@ export default {
       }
       if (camp0 === 0) {console.log('you lose')}
       else if (camp1 === 0) {console.log('you win')}
-      this.queue.splice(this.queue.indexOf(this.checkRemain), 1)
+      removeFromArr(this.queue, this.checkRemain)
     },
     // initialize all chesses at this round start
     initAllChess () {
@@ -381,7 +363,7 @@ export default {
             if (g.mp) {
               g._mp = 0
               if (!g.buff) g.buff = []
-              g.buff.push(new buff_regainMana(g))
+              g.buff.push(new buff_regainMana(this, g))
             }
           }
         }
@@ -390,9 +372,9 @@ export default {
     setOppChess () {
       this.setChess(0, 2, this.createChess(0, 1))
       this.setChess(1, 2, this.createChess(0, 1))
-      this.setChess(1, 3, this.createChess(0, 1))
-      this.setChess(2, 4, this.createChess(0, 1))
-      this.setChess(2, 5, this.createChess(0, 1))
+      // this.setChess(1, 3, this.createChess(0, 1))
+      // this.setChess(2, 4, this.createChess(0, 1))
+      // this.setChess(2, 5, this.createChess(0, 1))
       this.setChess(0, 4, this.createChess(1, 1))
     },
     /*
@@ -478,13 +460,14 @@ export default {
       return paths[minInd]
     },
     getPath (chess, target) {
-      let tgt = [Number(target[0]), Number(target[1])]
+      let tgt = numberize(target)
       let open = []
       let close = []
       let flag = this.samePos(chess.pos, [-1,-1]) ? true : false
       return this.getPathNode(chess.pos, tgt, open, close, flag)
     },
     getSixPos(cen) {
+      cen = numberize(cen)
       let dir = cen[0]%2===1 ? [[-1,0],[-1,1],[0,1],[1,1],[1,0],[0,-1]] : [[-1,-1],[-1,0],[0,1],[1,0],[1,-1],[0,-1]]
       let sixPos = []
       for (let i in dir) {
@@ -497,6 +480,7 @@ export default {
       return sixPos
     },
     getCoord (r, c) {
+      [r, c] = numberize([r, c])
       let w1 = PosInfo.board.w1
       let x = PosInfo.board.ratio * w1 * 2 * c + (r%2) * w1
       let y = r*3/2*w1
@@ -506,7 +490,7 @@ export default {
       return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2))
     },
     getDistance (a, b, c, d) {
-      a=Number(a), b=Number(b), c=Number(c), d=Number(d)
+      [a,b,c,d] = numberize([a,b,c,d])
       let colD = undefined
       let rowD = Math.abs(a-c)
       let k = Math.ceil(rowD/2)
@@ -554,9 +538,12 @@ export default {
         }
       }
       if (minSet.length > 1) {
-        nearest = minSet[this.randInt(minSet.length)]
+        nearest = minSet[randInt(minSet.length)]
       } else {
         nearest = minSet[0]
+      }
+      if (nearest) {
+        nearest = numberize(nearest)
       }
       return [nearest, minDis]
     },
@@ -568,7 +555,6 @@ export default {
       this.board.pfgrid.setWalkableAt(i, j, chess===undefined)
     },
     setChess (j, i, chess=undefined) {
-      console.log(j, i)
       let grid = this.board.grid
       // camp=0 friend, camp=1 opponent
       if (chess === undefined) {  // swap hold and grid[i][j]
@@ -591,27 +577,15 @@ export default {
       }
     },
     createChess (id, camp) {
-      let obj = new ChessInfo[id]()
+      let obj = new ChessInfo[id](this)
       obj.hold = false         // init hold
       obj.pos = undefined
       obj.status = {}
       obj.camp = camp
       return obj
     },
-    createThrownUtil (src, tgt) {
-      let thrown = JSON.parse(JSON.stringify(ThrownUtil))
-      thrown.sp = src.util.sp
-      thrown.tgt = tgt
-      thrown.src = src
-      thrown.damage = src.ad
-      thrown.coord = this.getCoord(...src.pos)
-      thrown.status = {prepare:true}
-      thrown.act = this.ThrownUtilAct
-      thrown.effect = this.ThrownUtilEffect
-      this.util.push(thrown)
-    },
-    randInt (r, s=0) {
-      return Math.floor(Math.random()*r)+s
+    createUtilAttack (src, tgt) {
+      let u = new util_attack(this, src, tgt)
     },
     /*
       draw functions
@@ -627,9 +601,7 @@ export default {
       let xbase = this.w/2-6.5*info.ratio*info.w1
       let ybase = info.marTop+info.h/2-3.75*info.w1
       for (let i in util) {
-        let ut = util[i]
-        ctx.fillStyle = 'blue'
-        ctx.fillRect(xbase+ut.coord[0]-5, ybase+ut.coord[1]-5, 10, 10)
+        util[i].draw(ctx, xbase, ybase)
       }
     },
     drawBoard () {
@@ -662,11 +634,20 @@ export default {
           let chess = grid[i][j]
           if (chess !== undefined) {
             let biasX=0, biasY=0
+            // status:move position bias
             if (chess.status.move >= 0) {
               let rad = (5-chess.orient)*Math.PI/3
               let biasD = ratio*2*w1*(1-chess.status.move/chess.sp)
               biasX = biasD * Math.cos(rad)
               biasY = -biasD * Math.sin(rad)
+            }
+            // status:jump position bias
+            if (chess.status.jump) {
+              let jump = chess.status.jump
+              let [x0, y0] = this.getCoord(...jump.src)
+              let [x1, y1] = this.getCoord(...jump.tgt)
+              biasX = -(x1-x0)*(1-jump.p/jump.pn)
+              biasY = -(y1-y0)*(1-jump.p/jump.pn)
             }
             // img
             let img = new Image()
