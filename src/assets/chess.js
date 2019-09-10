@@ -91,6 +91,20 @@ export class buff_tristana_explosiveSpark extends buff {
     ctx.fillRect(cenL-r, cenT-r,2*r,2*r)
   }
 }
+// type: ad / hp / armor / mr / as
+export class buff_val extends buff {
+  constructor (vm, src, type, val, rate=0) {
+    super(vm, src)
+    this.type = type
+    this.val = val
+    this.rate = rate
+  }
+  response (type) {
+    if (type === this.type) {
+      return [this.val, this.rate]
+    }
+  }
+}
 
 export class chess {
   constructor (vm) {
@@ -105,6 +119,24 @@ export class chess {
       this.status[i] = undefined
     }
     this.status.dead = true
+  }
+  get ad () {
+    let rate = 1
+    let bonus = 0
+    for (let i in this.buff) {
+      let res = this.buff[i].response('ad')
+      if (res) {
+        if (res[1]) {
+          rate += res[0]
+        } else {
+          bonus += res[0]
+        }
+      }
+    }
+    return (this._ad + bonus) * rate
+  }
+  set ad (ad) {
+    this._ad = ad
   }
 }
 
@@ -121,10 +153,12 @@ export default [
       this.src = 'Tristana_d.png',
       this.hp = 550,
       this.mp = 100,
-      this.ad = 50,
+      this._ad = 50,
       this.as = 0.65,
       this.sp = 75,
       this.range = 4,
+      this.armor = 20,
+      this.mr = 20,
       this.util = {
         sp: 800,
         bomb_sp: 600,
@@ -151,10 +185,12 @@ export default [
       this.src = 'Obama_d.png',
       this.hp = 550,
       this.mp = 100,
-      this.ad = 65,
+      this._ad = 65,
       this.as = 0.65,
       this.range = 3,
       this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
       this.util = {
         sp: 1000,
         spell_sp: 20,
@@ -163,6 +199,7 @@ export default [
       this.lvl = 0
       this.buff = [
       ]
+      this.buff.push(new buff_val(this.vm, this, 'ad', 100))
       this.spell = function relentless_pursuit () {
         if (this.status.target) {
           let grid = this.vm.board.grid

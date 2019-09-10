@@ -301,14 +301,20 @@ export default {
       if (!tgt) tgt = util.tgt
       // compute mitigated damage
       let damage = util.damage
+      if (util.type === 0) {
+        damage = this.mitigate(util.tgt.armor) * damage
+      } else if (util.type === 0) {
+        damage = this.mitigate(util.tgt.mr) * damage
+      }
       // add damage to record
       let record = this.game.damageRecord
       if (util.src.camp === 0) {
+        let intDamage = Math.round(damage)
         let pair = record.find(x => {return x.id === util.src.id})
         if (pair) {
-          pair.val += damage
+          pair.val += intDamage
         } else {
-          record.push({id: util.src.id, val: damage})
+          record.push({id: util.src.id, val: intDamage})
         }
         record.sort((a,b) => {a.val < b.val})
       }
@@ -320,6 +326,9 @@ export default {
       if (tgt._hp <= 0) {
         tgt.die()
       }
+    },
+    mitigate (n) {
+      return 100 / (n + 100)
     },
     dealBuff (type, ...args) {
       if (type === 'damage') {

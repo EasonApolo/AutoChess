@@ -37,6 +37,7 @@ export class util_attack extends util_tgt {
     super(vm, src, tgt)
     this.damage = src.ad
     this.sp = src.util.sp
+    this.type = 0
   }
   draw (ctx, xbase, ybase) {
     ctx.fillStyle = 'blue'
@@ -49,6 +50,7 @@ export class util_obama_second_bullet extends util_tgt {
     this.sp = src.util.sp
     this.size = src.util.sz
     this.damage = damage
+    this.type = 1
   }
   draw (ctx, xbase, ybase) {
     ctx.fillStyle = 'white'
@@ -62,6 +64,7 @@ export class util_tristana_bomb extends util_tgt {
     super(vm, src, tgt)
     this.sp = src.util.bomb_sp
     this.size = src.util.bomb_sz
+    this.type = 1
   }
   draw (ctx, xbase, ybase) {
     ctx.fillStyle = 'red'

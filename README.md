@@ -1,9 +1,5 @@
 # chess
 
-## Notes
-
-Chess initialization (add status ready, set _hp) is done in initAllChess() which is called at the round start rather than setChess(), since the game is designed that no more chess setting after round start. Therefore, chesses been set after round start cannot attack or do not have _hp.
-
 ## Todos
 
 | 任务 | 优先级 | 完成 |
@@ -18,6 +14,9 @@ Chess initialization (add status ready, set _hp) is done in initAllChess() which
 | 伤害类型，护甲/魔抗、无敌、闪避、反弹等效果 | 特别高 | × |
 | 回合设置 | 低 | × |
 | 多人对战 | 低 | × |
+| 降星刀 | 高 | × |
+| 飓风 | 低 | × |
+| 召唤生物 | 中 | × |
 
 ## BugReminder
 
