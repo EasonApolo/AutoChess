@@ -1,6 +1,7 @@
-import { util_obama_second_bullet, util_tristana_bomb } from "./util";
+import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
+import { getPriority } from "os";
 
 export class buff {
   constructor (vm, src) {
@@ -199,7 +200,7 @@ export default [
       this.lvl = 0
       this.buff = [
       ]
-      this.buff.push(new buff_val(this.vm, this, 'ad', 100))
+      // this.buff.push(new buff_val(this.vm, this, 'ad', 100))
       this.spell = function relentless_pursuit () {
         if (this.status.target) {
           let grid = this.vm.board.grid
@@ -219,6 +220,57 @@ export default [
           } else {  // no available jump position
             return false
           }
+        }
+      }
+    }
+  },
+
+  class 疾风剑豪 extends chess {
+    constructor (vm) {
+      super(vm)
+      this.id = 2,
+      this.name = '疾风剑豪',
+      this.lvl = 0
+      this.size = 1,
+      this.cat = [3, 4],
+      this.src = 'Yasuo_d.png',
+      this.hp = 700,
+      this.mp = 100,
+      this._ad = 75,
+      this.as = 1,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 1000,
+      this.mr = 20,
+      this.util = {
+        sp: 1000,
+      },
+      this.buff = [
+      ]
+      this.spell_pre = 30
+      this.spell_stage = 0
+      this.spell = function steel_tempest () {
+        if (this.status.target) {
+          let orient = this.vm.getOrient(...this.pos, ...this.status.target.pos)
+          let grids = []
+          let grid = this.vm.getOrientGrid(this.pos, orient)
+          if (grid) {
+            grids.push(grid)
+            grid = this.vm.getOrientGrid(grids[0], orient)
+            if (grid) {
+              grids.push(grid)
+            }
+          }
+          console.log(orient, grids)
+          // if (this.spell_stage < 2) {
+            new util_yasuo_tempest(this.vm, this, grids)
+            this.spell_stage ++
+          // } else {
+          //   new util_yasuo_tornado(this.vm, this)
+          //   this.spell_stage = 0
+          // }
+          this.status.attack = 0
+          this.status.spell = 0
         }
       }
     }

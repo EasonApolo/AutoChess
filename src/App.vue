@@ -29,7 +29,7 @@ export default {
       mouse: {x:undefined, y:undefined},
       game: {
         turn: 0,
-        gold: 3,
+        gold: 100,
         lvl: 1,
         costUpgrade: 4,
         costRedeal: 2,
@@ -229,7 +229,7 @@ export default {
                   chess.status.attack = 0
                   this.dealBuff('attack', chess)
                   this.createUtilAttack(chess, chess.status.target)
-                  if (chess._mp >= chess.mp) {
+                  if (chess._mp >= chess.mp) {  // 攻击完成后才会施法
                     this.castSpell(chess)
                   }
                 }
@@ -267,7 +267,7 @@ export default {
       }
       let util = this.util
       for (let i in util) {
-        if (util[i].status.prepare) {
+        if (util[i].status.prepare || util[i].status.done) {
           util[i].act()
         } else if (util[i].status.ready) {
           util[i].effect()
@@ -404,6 +404,22 @@ export default {
           }
         }
       }
+    },
+    getOrientGrid (now, orient) {
+      let pos = []
+      let odd = now[0]%2
+      console.log(now, orient)
+      if (orient < 2) {
+        pos[0] = now[0] - 1
+        pos[1] = odd?now[1]+orient:now[1]+orient-1
+      } else if (orient == 3 || orient == 4) {
+        pos[0] = now[0] + 1
+        pos[1] = odd?now[1]+4-orient:now[1]+3-orient
+      } else {
+        pos = [now[0], orient === 2 ? now[1]+1:now[1]-1]
+      }
+      if (pos[0] < 0 || pos[0] > 5 || pos[1] < 0 || pos[1] > 6) return undefined
+      return pos
     },
     samePos (a, b) {
       return a[0] === b[0] && a[1] === b[1]
@@ -780,10 +796,10 @@ body {
   text-align: center;
   color: #2c3e50;
 }
-#canvas {
-  opacity: 0;
-  &:hover {
-    opacity: 1;
-  }
-}
+// #canvas {
+//   opacity: 0;
+//   &:hover {
+//     opacity: 1;
+//   }
+// }
 </style>

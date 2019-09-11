@@ -77,3 +77,58 @@ export class util_tristana_bomb extends util_tgt {
     removeFromArr(this.vm.util, this)
   }
 }
+export class util_area {
+  constructor (vm, src, grids) {
+    this.vm = vm,
+    this.vm.util.push(this)
+    this.src = src,
+    this.grids = grids
+    this.status = {prepare:true}
+  }
+}
+export class util_yasuo_tempest extends util_area {
+  constructor (vm, src, grids) {
+    super(vm, src, grids)
+    this.base = [150, 350, 550]
+    this.damage = this.base[this.src.lvl]
+    this.type = 1
+    this.pre = 20
+    this.post = 20
+  }
+  act () {
+    if (this.status.prepare) {
+      if (this.pre <= 0) {
+        this.status = {ready:true}
+      } else {
+        this.pre --
+      }
+    } else if (this.status.done) {
+      if (this.post <= 0) {
+        removeFromArr(this.vm.util, this)
+      }
+    }
+  }
+  effect () {
+    this.status = {done:true}
+    for (let i in this.grids) {
+      let pos = this.grids[i]
+      let tgt = this.vm.board.grid[pos[0]][pos[1]]
+      if (tgt && tgt.camp !== this.src.camp) {
+        this.vm.damage(this, tgt)
+      }
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    ctx.lineWidth = 10
+    ctx.strokeStyle = '#666'
+    ctx.beginPath()
+    let srcPos = this.vm.getCoord(...this.grids[0])
+    let tgtPos = this.vm.getCoord(...this.grids[1])
+    srcPos = [srcPos[0]+xbase,srcPos[1]+ybase]
+    tgtPos = [tgtPos[0]+xbase,tgtPos[1]+ybase]
+    ctx.moveTo(...srcPos)
+    ctx.lineTo(...tgtPos)
+    ctx.stroke()
+    ctx.lineWidth = 1
+  }
+}
