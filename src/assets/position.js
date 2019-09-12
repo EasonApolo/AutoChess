@@ -9,7 +9,8 @@ export default {
         'hpW': 120,
         'hpT': 70,
         'hpH': 3,
-        'mpT': 65,
+        'mpT': 67,
+        'spT': 64,
     },
     "hand": {
         "marTop": 1300+10,

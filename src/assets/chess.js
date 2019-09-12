@@ -1,7 +1,7 @@
-import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest } from "./util";
+import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
-import { getPriority } from "os";
+import PosInfo from './position'
 
 export class buff {
   constructor (vm, src) {
@@ -168,10 +168,13 @@ export default [
       this.lvl = 0
       this.buff = [
       ],
+      this.spell_pre = 10
       this.spell = function explosiveSpark () {
         if (this.status.target) {
           new util_tristana_bomb(this.vm, this, this.status.target)
         }
+        this.status.spell = undefined
+        this.status.attack = 0
       }
     }
   },
@@ -201,6 +204,7 @@ export default [
       this.buff = [
       ]
       // this.buff.push(new buff_val(this.vm, this, 'ad', 100))
+      this.spell_pre = 0
       this.spell = function relentless_pursuit () {
         if (this.status.target) {
           let grid = this.vm.board.grid
@@ -213,12 +217,10 @@ export default [
             }
           }
           if (avails.length) {
-            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: avails[randInt(avails.length)]}
-            this.status.ready = undefined
             this.status.attack = undefined
+            this.status.spell = undefined
+            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: avails[randInt(avails.length)]}
             this.buff.push(new buff_obama_nextAttackWith(this.vm, this, this.status.target))
-          } else {  // no available jump position
-            return false
           }
         }
       }
@@ -231,16 +233,16 @@ export default [
       this.id = 2,
       this.name = '疾风剑豪',
       this.lvl = 0
-      this.size = 1,
+      this.size = 0.8,
       this.cat = [3, 4],
       this.src = 'Yasuo_d.png',
       this.hp = 700,
-      this.mp = 100,
+      this.mp = 25,
       this._ad = 75,
       this.as = 1,
       this.range = 1,
       this.sp = 60,
-      this.armor = 1000,
+      this.armor = 35,
       this.mr = 20,
       this.util = {
         sp: 1000,
@@ -251,26 +253,25 @@ export default [
       this.spell_stage = 0
       this.spell = function steel_tempest () {
         if (this.status.target) {
-          let orient = this.vm.getOrient(...this.pos, ...this.status.target.pos)
-          let grids = []
-          let grid = this.vm.getOrientGrid(this.pos, orient)
-          if (grid) {
-            grids.push(grid)
-            grid = this.vm.getOrientGrid(grids[0], orient)
-            if (grid) {
-              grids.push(grid)
-            }
-          }
-          console.log(orient, grids)
-          // if (this.spell_stage < 2) {
-            new util_yasuo_tempest(this.vm, this, grids)
+          let [x0,y0] = this.vm.getCoord(...this.pos)
+          let [x1,y1] = this.vm.getCoord(...this.status.target.pos)
+          let tgtLen = this.vm.getEuclid(x0, y0, x1, y1)
+          let info = PosInfo.board
+          if (this.spell_stage < 2) {
+            let len = info.w1*info.ratio*4
+            let xt = len/tgtLen*(x1-x0)+x0
+            let yt = len/tgtLen*(y1-y0)+y0
+            new util_yasuo_tempest(this.vm, this, [x0,y0], [xt,yt])
             this.spell_stage ++
-          // } else {
-          //   new util_yasuo_tornado(this.vm, this)
-          //   this.spell_stage = 0
-          // }
+          } else {
+            let len = info.w1*info.ratio*10
+            let x_len = (x1-x0)/tgtLen*len
+            let y_len = (y1-y0)/tgtLen*len
+            new util_yasuo_tornado(this.vm, this, x_len, y_len)
+            this.spell_stage = 0
+          }
+          this.status.spell = undefined
           this.status.attack = 0
-          this.status.spell = 0
         }
       }
     }

@@ -16,7 +16,6 @@ import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize } from './assets/helper'
-var PF = require('pathfinding')
 
 export default {
   name: 'app',
@@ -39,7 +38,6 @@ export default {
       hold: undefined,
       board: {
         grid: [[], [], [], [], [], []],
-        pfgrid: new PF.Grid(6, 7)
       },
       store: {
         cards: new Array(5).fill(undefined)
@@ -262,6 +260,14 @@ export default {
                 jump.p ++
               }
             }
+            else if (chess.status.spell >= 0) {
+              if (chess.status.spell < chess.spell_pre) {
+                chess.status.spell ++
+              } else {
+                chess.status.spell = undefined
+                chess.spell()
+              }
+            }
           }
         }
       }
@@ -291,9 +297,11 @@ export default {
       }
       return true
     },
+    // transition into pre_spell stage
     castSpell (chess) {
       if (chess.spell) {
-        chess.spell()
+        chess.status.attack = undefined
+        chess.status.spell = 0
         chess._mp = 0
       }
     },
@@ -408,7 +416,6 @@ export default {
     getOrientGrid (now, orient) {
       let pos = []
       let odd = now[0]%2
-      console.log(now, orient)
       if (orient < 2) {
         pos[0] = now[0] - 1
         pos[1] = odd?now[1]+orient:now[1]+orient-1
@@ -573,7 +580,6 @@ export default {
         chess.pos = [i, j]
       }
       this.board.grid[i][j] = chess
-      this.board.pfgrid.setWalkableAt(i, j, chess===undefined)
     },
     setChess (j, i, chess=undefined) {
       let grid = this.board.grid
@@ -673,12 +679,17 @@ export default {
             // img
             let img = new Image()
             img.src = chess.src
-            ctx.drawImage(img, cenL-w2/2+biasX, cenT-w2/2+biasY, w2, w2)
+            let imgW = chess.size * w2
+            ctx.drawImage(img, cenL-imgW/2+biasX, cenT-imgW/2+biasY, imgW, imgW)
             // hp mp
             ctx.fillStyle = chess.camp===0 ? ColorInfo.chessHp:ColorInfo.chessHpOppo
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
             ctx.fillStyle = ColorInfo.chessMp
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess._mp/chess.mp*info.hpW, info.hpH)
+            if (chess.status.spell) {
+              ctx.fillStyle = ColorInfo.chessSp
+              ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, chess.status.spell/chess.spell_pre*info.hpW, info.hpH)
+            }
             // buff
             for (let i in chess.buff) {
               if (chess.buff[i].draw) {

@@ -1,5 +1,6 @@
 import { removeFromArr } from "./helper";
 import { buff_tristana_explosiveSpark } from "./chess";
+import PosInfo from './position'
 
 export class util_tgt {
   constructor (vm, src, tgt) {
@@ -78,21 +79,23 @@ export class util_tristana_bomb extends util_tgt {
   }
 }
 export class util_area {
-  constructor (vm, src, grids) {
+  constructor (vm, src) {
     this.vm = vm,
     this.vm.util.push(this)
     this.src = src,
-    this.grids = grids
     this.status = {prepare:true}
   }
 }
 export class util_yasuo_tempest extends util_area {
-  constructor (vm, src, grids) {
-    super(vm, src, grids)
+  constructor (vm, src, start, end) {
+    super(vm, src)
     this.base = [150, 350, 550]
     this.damage = this.base[this.src.lvl]
+    this.start = start
+    this.end = end
+    this.width = 10
     this.type = 1
-    this.pre = 20
+    this.pre = 5
     this.post = 20
   }
   act () {
@@ -105,30 +108,92 @@ export class util_yasuo_tempest extends util_area {
     } else if (this.status.done) {
       if (this.post <= 0) {
         removeFromArr(this.vm.util, this)
+      } else {
+        this.post --
       }
     }
   }
   effect () {
     this.status = {done:true}
-    for (let i in this.grids) {
-      let pos = this.grids[i]
-      let tgt = this.vm.board.grid[pos[0]][pos[1]]
-      if (tgt && tgt.camp !== this.src.camp) {
-        this.vm.damage(this, tgt)
+    let g1 = [(this.start[0]+this.end[0])/2, (this.start[1]+this.end[1])/2]
+    let g2 = this.end
+    let grids = this.vm.board.grid
+    for (let r in grids) {
+      for (let c in grids) {
+        if (grids[r][c] !== undefined && this.vm.getDistance(...this.src.pos, r, c) < 3 && this.src.camp !== grids[r][c].camp) { // only compute possible grid
+          if (this.vm.getEuclid(...g1, ...(this.vm.getCoord(r, c))) < (66 + 10) || this.vm.getEuclid(...g2, ...(this.vm.getCoord(r, c))) < (66+10)) {
+            this.vm.damage(this, grids[r][c])
+          }
+        }
       }
     }
   }
   draw (ctx, xbase, ybase) {
-    ctx.lineWidth = 10
-    ctx.strokeStyle = '#666'
+    let opacity = this.pre > 0 ? 1-this.pre/5 : this.post / 20
+    ctx.lineWidth = 5
+    ctx.strokeStyle = `rgba(222, 222, 222, ${opacity})`
     ctx.beginPath()
-    let srcPos = this.vm.getCoord(...this.grids[0])
-    let tgtPos = this.vm.getCoord(...this.grids[1])
-    srcPos = [srcPos[0]+xbase,srcPos[1]+ybase]
-    tgtPos = [tgtPos[0]+xbase,tgtPos[1]+ybase]
+    let srcPos = [this.start[0]+xbase,this.start[1]+ybase]
+    let tgtPos = [this.end[0]+xbase,this.end[1]+ybase]
     ctx.moveTo(...srcPos)
     ctx.lineTo(...tgtPos)
     ctx.stroke()
     ctx.lineWidth = 1
+  }
+}
+export class util_yasuo_tornado extends util_area{
+  constructor (vm, src, x_len, y_len) {
+    super(vm, src)
+    this.w = 0    // radius
+    this.sp = 90  // finish in 60 ticks
+    this.now = 0  // current tick
+    this.len = PosInfo.board.w1 * 10  // total length
+    this.start = this.vm.getCoord(...src.pos)              // start pos
+    this.pos = this.start
+    this.x_len = x_len
+    this.y_len = y_len
+    this.been = []
+    this.post = 20
+    this.base = [150, 350, 550]
+    this.damage = this.base[this.src.lvl]
+  }
+  act () {
+    if (this.status.prepare) {
+      if (this.now === this.sp) {
+        this.status = {done:true}
+        this.post = this.sp/3
+        return
+      }
+      let rate = this.now / this.sp
+      this.w = this.now
+      this.pos = [rate*this.x_len + this.start[0], rate*this.y_len + this.start[1]]
+      let grids = this.vm.board.grid
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (grids[r][c] !== undefined && grids[r][c].camp !== this.src.camp && this.been.indexOf(grids[r][c]) < 0) {
+            // console.log(grids[r][c], this.been, this.been.indexOf(grids[r][c]))
+            if (this.vm.getEuclid(...this.pos, ...this.vm.getCoord(r,c)) < (66 + this.w)) {
+              this.vm.damage(this, grids[r][c])
+              this.been.push(grids[r][c])
+            }
+          }
+        }
+      }
+      this.now++
+    } else if (this.status.done) {
+      this.w = this.post*3
+      if (this.post <= 0) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.post --
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    ctx.strokeStyle = 'rgb(200,200,200)'
+    ctx.lineWidth = '5'
+    ctx.beginPath()
+    ctx.arc(this.pos[0]+xbase, this.pos[1]+ybase, this.w, 0, 2*Math.PI)
+    ctx.stroke()
+    ctx.lineWidth = '1'
   }
 }
