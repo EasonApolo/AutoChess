@@ -156,6 +156,7 @@ export class util_yasuo_tornado extends util_area{
     this.post = 20
     this.base = [150, 350, 550]
     this.damage = this.base[this.src.lvl]
+    this.stun = 1.5 * 60
   }
   act () {
     if (this.status.prepare) {
@@ -174,6 +175,10 @@ export class util_yasuo_tornado extends util_area{
             // console.log(grids[r][c], this.been, this.been.indexOf(grids[r][c]))
             if (this.vm.getEuclid(...this.pos, ...this.vm.getCoord(r,c)) < (66 + this.w)) {
               this.vm.damage(this, grids[r][c])
+              if (grids[r][c]) {
+                this.vm.stun(this, grids[r][c])
+              }
+              console.log(grids[r][c])
               this.been.push(grids[r][c])
             }
           }

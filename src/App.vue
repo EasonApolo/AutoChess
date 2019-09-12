@@ -268,6 +268,15 @@ export default {
                 chess.spell()
               }
             }
+            else if (chess.status.stun) {
+              let stun = chess.status.stun
+              if (stun.p<stun.pn) {
+                stun.p++
+              } else {
+                chess.status.stun = undefined
+                chess.status.ready = true
+              }
+            }
           }
         }
       }
@@ -334,6 +343,17 @@ export default {
       if (tgt._hp <= 0) {
         tgt.die()
       }
+    },
+    stun (util, tgt=undefined) {
+      if (!tgt) {
+        tgt = util.target
+      }
+      // stunning shouldn't stop jump
+      tgt.status.attack = undefined
+      tgt.status.spell = undefined
+      tgt.status.ready = undefined
+      console.log(util.stun)
+      tgt.status.stun = {type:0,p:0,pn:util.stun}
     },
     mitigate (n) {
       return 100 / (n + 100)
@@ -689,6 +709,17 @@ export default {
             if (chess.status.spell) {
               ctx.fillStyle = ColorInfo.chessSp
               ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, chess.status.spell/chess.spell_pre*info.hpW, info.hpH)
+            }
+            if (chess.status.stun) {
+              if (chess.status.stun.type===0) {
+                let startAngle = Math.PI*2*(chess.status.stun.p%36)/36
+                ctx.strokeStyle = '#666'
+                ctx.lineWidth = 4
+                ctx.beginPath()
+                ctx.arc(cenL+biasX, cenT-50+biasY, 20, startAngle, Math.PI*5/3+startAngle)
+                ctx.stroke()
+                ctx.lineWidth = 1
+              }
             }
             // buff
             for (let i in chess.buff) {
