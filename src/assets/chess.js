@@ -1,4 +1,4 @@
-import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado } from "./util";
+import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -56,6 +56,7 @@ export class buff_tristana_explosiveSpark extends buff {
     this.base = [150, 225, 300]
     this.lvl = src.lvl
     this.damage = 0
+    this.type = 1
     setTimeout(() => {
       if (this.damage === 0) {    // warning
         this.explode()
@@ -107,6 +108,38 @@ export class buff_val extends buff {
   }
 }
 
+export class buff_graves_buckshot extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+  }
+  response (type, ...args) {
+    if (['attack'].includes(type)) {
+      let len = (this.src.range+1)*2 *PosInfo.board.w1*PosInfo.board.ratio // if range 1, attack 2block(4w), if range 
+      let [x1, y1] = this.vm.getCoord(...this.src.status.target.pos)
+      let [x0, y0] = this.vm.getCoord(...this.src.pos)
+      let midAngle = Math.atan((y1-y0)/(x1-x0))
+      if (x1 < x0) {  // arctan only get -PI/2 ~ PI/2 (always right side)
+        midAngle = -midAngle
+      }
+      let angles = []
+      for (let i=0; i < 6; i++) {
+        angles.push(midAngle+(i-2.5)*Math.PI*2/30)
+      }
+      angles = angles.map(v => {
+        return [len*Math.cos(v),len*Math.sin(v)]
+      })
+      new util_graves_buckshot(this.vm, this.src, angles)
+    }
+  }
+}
+
+export class buff_init_gun {
+  constructor () {
+
+  }
+}
+
+
 export class chess {
   constructor (vm) {
     this.vm = vm
@@ -139,21 +172,27 @@ export class chess {
   set ad (ad) {
     this._ad = ad
   }
+  get name () {
+    return this._name
+  }
+  set name (name) {
+    this._name = name
+  }
 }
 
 // chess class definitions:
 
 export default [
-  class 麦林炮手 extends chess {
+  class Tristana extends chess {
     constructor (vm) {
       super(vm)
       this.id = 0,
-      this.name = '麦林炮手',
-      this.size = 1,
+      this._name = '麦林炮手',
+      this.size = 0.8,
       this.cat = [0, 1],
       this.src = 'Tristana_d.png',
       this.hp = 550,
-      this.mp = 100,
+      this.mp = 50,
       this._ad = 50,
       this.as = 0.65,
       this.sp = 75,
@@ -179,16 +218,16 @@ export default [
     }
   },
 
-  class 圣枪游侠 extends chess {
+  class Obama extends chess {
     constructor (vm) {
       super(vm)
       this.id = 1,
-      this.name = '圣枪游侠',
-      this.size = 1,
+      this._name = '圣枪游侠',
+      this.size = 0.8,
       this.cat = [0, 2],
       this.src = 'Obama_d.png',
       this.hp = 550,
-      this.mp = 100,
+      this.mp = 35,
       this._ad = 65,
       this.as = 0.65,
       this.range = 3,
@@ -227,11 +266,11 @@ export default [
     }
   },
 
-  class 疾风剑豪 extends chess {
+  class Yasuo extends chess {
     constructor (vm) {
       super(vm)
       this.id = 2,
-      this.name = '疾风剑豪',
+      this._name = '疾风剑豪',
       this.lvl = 0
       this.size = 0.8,
       this.cat = [3, 4],
@@ -274,6 +313,32 @@ export default [
           this.status.attack = 0
         }
       }
+    }
+  },
+
+  class Graves extends chess {
+    constructor (vm) {
+      super(vm)
+      this.id = 3,
+      this._name = '法外狂徒',
+      this.lvl = 0
+      this.size = 0.8,
+      this.cat = [0, 5],
+      this.src = 'Graves_d.png',
+      this.hp = 450,
+      this.mp = 0,
+      this._ad = 55,
+      this.as = 0.55,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this.util = {
+        sp: 1000,
+      },
+      this.buff = [
+        new buff_graves_buckshot(this.vm, this)
+      ]
     }
   }
 ]

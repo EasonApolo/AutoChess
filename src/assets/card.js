@@ -16,6 +16,12 @@ export default [
         "name": "疾风剑豪",
         "cost": 5,
         "cat": [3, 4]
+    },
+    {
+        "id": 3,
+        "name": "法外狂徒",
+        "cost": 1,
+        "cat": [0, 5]
     }
 ]
 

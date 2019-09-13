@@ -31,5 +31,11 @@ export default {
         't': 100,
         'spw':50,
         'sph':30
+    },
+    "class": {
+        'l': 100,
+        't': 500,
+        'spw': 70,
+        'sph': 30
     }
 }

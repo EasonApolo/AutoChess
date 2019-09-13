@@ -7,3 +7,11 @@ export function removeFromArr (arr, obj) {
 export function numberize (arr) {
   return arr.map(v=>Number(v))
 }
+export function findExistKey (arr, key, val) {
+  for (let i in arr) {
+    if (arr[i][key] === val) {
+      return i
+    }
+  }
+  return undefined
+}

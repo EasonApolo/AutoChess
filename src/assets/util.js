@@ -157,6 +157,7 @@ export class util_yasuo_tornado extends util_area{
     this.base = [150, 350, 550]
     this.damage = this.base[this.src.lvl]
     this.stun = 1.5 * 60
+    this.stun_type = 0
   }
   act () {
     if (this.status.prepare) {
@@ -199,6 +200,65 @@ export class util_yasuo_tornado extends util_area{
     ctx.beginPath()
     ctx.arc(this.pos[0]+xbase, this.pos[1]+ybase, this.w, 0, 2*Math.PI)
     ctx.stroke()
+    ctx.lineWidth = '1'
+  }
+}
+
+
+export class util_graves_buckshot extends util_area{
+  constructor (vm, src, xys) {
+    super(vm, src)
+    this.w = 10   // radius
+    this.sp = 10  // finish in 60 ticks
+    this.now = 0  // current tick
+    this.start = this.vm.getCoord(...src.pos)              // start pos
+    this.xys = xys
+    this.pos = xys.map(v => this.start)
+    this.been = [this.src.status.target]
+    this.post = 20
+    this.damage = this.src.ad
+  }
+  act () {
+    if (this.status.prepare) {
+      if (this.now === this.sp) {
+        this.status = {done:true}
+        return
+      }
+      let rate = this.now / this.sp
+      for (let i in this.xys) {
+        this.pos[i] = [this.start[0]+this.xys[i][0]*rate, this.start[1]+this.xys[i][1]*rate]
+      }
+      let grids = this.vm.board.grid
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (grids[r][c] !== undefined && grids[r][c].camp !== this.src.camp && this.been.indexOf(grids[r][c]) < 0) {
+            for (let i in this.pos) {
+              if (this.vm.getEuclid(...this.pos[i], ...this.vm.getCoord(r,c)) < (66 + this.w)) {
+                this.vm.damage(this, grids[r][c])
+                this.been.push(grids[r][c])
+                break
+              }
+            }
+          }
+        }
+      }
+      this.now++
+    } else if (this.status.done) {
+      if (this.post <= 0) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.post --
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    ctx.strokeStyle = this.status.prepare ? '#eec545' : `rgba(238,197,69,${this.post/20})`
+    ctx.lineWidth = '3'
+    for (let i in this.pos) {
+      ctx.beginPath()
+      ctx.moveTo(this.start[0]+xbase, this.start[1]+ybase)
+      ctx.lineTo(this.pos[i][0]+xbase, this.pos[i][1]+ybase)
+      ctx.stroke()
+    }
     ctx.lineWidth = '1'
   }
 }

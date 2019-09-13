@@ -9,13 +9,13 @@
 
 <script>
 import CardInfo from './assets/card'
-import TypeInfo from './assets/type'
+import ClassInfo from './assets/class'
 import PosInfo from './assets/position'
 import ChessInfo, { buff_regainMana } from './assets/chess'
 import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
-import { randInt, removeFromArr, numberize } from './assets/helper'
+import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
 
 export default {
   name: 'app',
@@ -34,6 +34,7 @@ export default {
         costRedeal: 2,
         damageRecord: [],
         grave: [],
+        classes: {},
       },
       hold: undefined,
       board: {
@@ -85,6 +86,7 @@ export default {
       this.drawHold()
       this.drawUtil()
       this.drawDamageRecord()
+      this.drawclasses()
       for (let i in this.queue) {
         this.queue[i]()
       }
@@ -319,9 +321,9 @@ export default {
       // compute mitigated damage
       let damage = util.damage
       if (util.type === 0) {
-        damage = this.mitigate(util.tgt.armor) * damage
-      } else if (util.type === 0) {
-        damage = this.mitigate(util.tgt.mr) * damage
+        damage = this.mitigate(tgt.armor) * damage
+      } else if (util.type === 1) {
+        damage = this.mitigate(tgt.mr) * damage
       }
       // add damage to record
       let record = this.game.damageRecord
@@ -352,8 +354,7 @@ export default {
       tgt.status.attack = undefined
       tgt.status.spell = undefined
       tgt.status.ready = undefined
-      console.log(util.stun)
-      tgt.status.stun = {type:0,p:0,pn:util.stun}
+      tgt.status.stun = {type:util.stun_type,p:0,pn:util.stun}
     },
     mitigate (n) {
       return 100 / (n + 100)
@@ -404,6 +405,40 @@ export default {
           }
         }
       }
+      this.game.classes = this.initBuffs(0)
+      this.initBuffs(1)
+    },
+    initBuffs (camp) {
+      let grids = this.board.grid
+      let classes = {}
+      let info = ClassInfo
+      let chessNames = []
+      for (let r in grids) {
+        for (let c in grids) {
+          if (grids[r][c] !== undefined && grids[r][c].camp === camp && chessNames.indexOf(grids[r][c].name) < 0) {
+            chessNames.push(grids[r][c].name)
+            grids[r][c].cat.map(v => {
+              if (v in classes) {classes[v].n++}
+              else {classes[v] = {n:1}}
+            })
+          }
+        }
+      }
+      for (let c in classes) {
+        for (let s in info[c].stage) {
+          if (info[c].exact && info[c].stage[s] === classes[c].n) {
+            classes[c].active = s
+          } else if (!info[c].exact) {
+            if (info[c].stage[s] <= classes[c].n) {
+              classes[c].active = s
+            } else {
+              break
+            }
+          }
+        }
+      }
+      console.log(classes)
+      return classes
     },
     setOppChess () {
       this.setChess(0, 2, this.createChess(0, 1))
@@ -779,7 +814,7 @@ export default {
         ctx.textAlign = 'start'
         ctx.fillText(cards[i].name, cardL+14, cardT+36)
         for (let j in cards[i].cat) {
-          ctx.fillText(TypeInfo[cards[i].cat[j]], cardL+14, cardT+120+j*40)
+          ctx.fillText(ClassInfo[cards[i].cat[j]].name, cardL+14, cardT+120+j*40)
         }
       }
       // first button
@@ -814,8 +849,33 @@ export default {
       let record = this.game.damageRecord
       ctx.fillStyle = 'green'
       for (let i in record) {
+        ctx.textAlign = 'right'
         ctx.fillText(ChessInfo[record[i].id].name, info.l, info.t+i*info.sph)
+        ctx.textAlign = 'left'
         ctx.fillText(record[i].val, info.l+info.spw, info.t+i*info.sph)
+      }
+    },
+    drawclasses () {
+      let ctx = this.ctx
+      let info = PosInfo.class
+      let classes = this.game.classes
+      let i = 0
+      for (let c in classes) {
+        ctx.fillStyle = '#333333'
+        ctx.textAlign = 'right'
+        ctx.fillText(ClassInfo[c].name, info.l, info.t+info.sph*i)
+        ctx.textAlign = 'right'
+        ctx.fillText(classes[c].n, info.l+info.spw, info.t+info.sph*i)
+        ctx.textAlign = 'left'
+        for (let s in ClassInfo[c].stage) {
+          if (classes[c].active && classes[c].active=== s) {
+              ctx.fillStyle = '#333333'
+          } else {
+            ctx.fillStyle = '#999999'
+          }
+          ctx.fillText(ClassInfo[c].stage[s], info.l+2*info.spw+25*(s), info.t+info.sph*i)
+        }
+        i++
       }
     }
   }
