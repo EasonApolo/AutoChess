@@ -133,9 +133,44 @@ export class buff_graves_buckshot extends buff {
   }
 }
 
-export class buff_init_gun {
-  constructor () {
-
+export class buff_class_gun extends buff {
+  constructor (vm, src, stage) {
+    super(vm, src)
+    this.base = [1, 2, 3]
+    this.extra = this.base[stage]
+  }
+  response(type, ...args) {
+    if (['attack'].includes(type)) {
+      let trigger = randInt(2)
+      if (trigger) {
+        let grids = this.vm.board.grid
+        let avails = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            if (grids[r][c] && grids[r][c].camp !== this.src.camp
+            && this.vm.getDistance(r, c, ...this.src.pos) < this.src.range  // in range
+            && grids[r][c] !== this.src.status.tgt) {                       // not current tgt
+              avails.push([r,c])
+            }
+          }
+        }
+        if (this.src.id === 1) {
+          console.log(avails)
+        }
+        if (avails.length === 0) return
+        else if (avails.length > this.extra) {
+          do {
+            avails.splice(randInt(avails.length), 1)
+          } while (avails.length > this.extra)
+        }
+        if (this.src.id === 1) {
+          console.log(avails)
+        }
+        for (let i in avails) {
+          this.vm.createUtilAttack(this.src, grids[avails[i][0]][avails[i][1]])
+        }
+      }
+    }
   }
 }
 

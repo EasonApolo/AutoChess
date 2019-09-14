@@ -179,7 +179,6 @@ export class util_yasuo_tornado extends util_area{
               if (grids[r][c]) {
                 this.vm.stun(this, grids[r][c])
               }
-              console.log(grids[r][c])
               this.been.push(grids[r][c])
             }
           }

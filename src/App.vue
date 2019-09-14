@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click'></canvas>
+    <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @contextmenu.prevent="click"></canvas>
     <div v-for='src in allsrc' :key='src' style='display:none'>
       <img :src='src'>
     </div>
@@ -123,8 +123,15 @@ export default {
         // j row index, i col index
         let j = Math.floor((a+b-7+1)/3)
         let i = Math.floor((c-(j%2+0.5)+1)/2)
+        if (e.button == 2) {
+          let grids = this.board.grid
+          if (grids[j][i]) {
+            console.log(grids[j][i].buff)
+          }
+          return
+        }
         // out of grids
-        if (i < 0 || i > 6 || j < 0 || j > 5) return
+        else if (i < 0 || i > 6 || j < 0 || j > 5) return
         else {
           this.setChess(j, i)
         }
@@ -399,16 +406,18 @@ export default {
             g._hp = g.hp
             if (g.mp) {
               g._mp = 0
-              if (!g.buff) g.buff = []
+              console.log(g.buff)
               g.buff.push(new buff_regainMana(this, g))
             }
           }
         }
       }
-      this.game.classes = this.initBuffs(0)
-      this.initBuffs(1)
+      this.game.classes = this.updateClasses(0)
+      this.game.oppoClasses = this.updateClasses(1)
+      this.initClassBuffs(0)
+      this.initClassBuffs(1)
     },
-    initBuffs (camp) {
+    updateClasses (camp) {
       let grids = this.board.grid
       let classes = {}
       let info = ClassInfo
@@ -437,12 +446,21 @@ export default {
           }
         }
       }
-      console.log(classes)
       return classes
+    },
+    initClassBuffs (camp) {
+      let classes = camp === 0 ? this.game.classes : this.game.oppoClasses
+      for (let c in classes) {
+        if (classes[c].active) {
+          if (ClassInfo[c].buff) {  // note: all class has buff, this check is for development safety
+            ClassInfo[c].buff(this, camp, classes[c].active)
+          }
+        }
+      }
     },
     setOppChess () {
       this.setChess(0, 2, this.createChess(0, 1))
-      this.setChess(1, 2, this.createChess(0, 1))
+      // this.setChess(1, 2, this.createChess(0, 1))
       this.setChess(0, 4, this.createChess(1, 1))
     },
     /*
