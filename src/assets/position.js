@@ -6,6 +6,7 @@ export default {
         "w1": 110,  // radius of grid
         "ratio": Math.sqrt(3) / 2,
         "w2": 132,  // width of chess image
+        "wEquip": 44,  // width of chess image
         'hpW': 120,
         'hpT': 70,
         'hpH': 3,
@@ -17,6 +18,7 @@ export default {
         "w": 240*9+10*10,
         "h": 240+2*10,
         "w1": 240,
+        "wEquip": 44,
         "sp": 10
     },
     "store": {
@@ -37,5 +39,10 @@ export default {
         't': 500,
         'spw': 70,
         'sph': 30
+    },
+    "equips": {
+        'l': 100,
+        't': 600,
+        'h': 70
     }
 }

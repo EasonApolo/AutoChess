@@ -11,11 +11,12 @@
 import CardInfo from './assets/card'
 import ClassInfo from './assets/class'
 import PosInfo from './assets/position'
-import ChessInfo, { buff_regainMana } from './assets/chess'
+import ChessInfo, { chess, buff_regainMana } from './assets/chess'
 import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
+import EquipInfo, { equip } from './assets/equip'
 
 export default {
   name: 'app',
@@ -46,6 +47,7 @@ export default {
       hand: {
         cards: new Array(9).fill(undefined)
       },
+      equips: new Array(9).fill(undefined),
       allsrc: [],
       queue: [],
       util: [],
@@ -68,6 +70,9 @@ export default {
     setTimeout(() => {
       console.log('set opponent')
       this.setOppChess()
+      this.equips[0] = new EquipInfo[0]()
+      this.equips[1] = new EquipInfo[0]()
+      this.equips[2] = new EquipInfo[0]()
     }, 1000)
     setTimeout(() => {
       console.log('round start')
@@ -87,6 +92,7 @@ export default {
       this.drawUtil()
       this.drawDamageRecord()
       this.drawclasses()
+      this.drawEquips()
       for (let i in this.queue) {
         this.queue[i]()
       }
@@ -108,6 +114,7 @@ export default {
     click (e) {
       let x = e.clientX*2
       let y = e.clientY*2
+      // click board
       let info = PosInfo.board
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
         // x,y relative position to board centre
@@ -133,18 +140,29 @@ export default {
         // out of grids
         else if (i < 0 || i > 6 || j < 0 || j > 5) return
         else {
-          this.setChess(j, i)
+          // if hold a equipment, equit it to the chess
+          if (this.board.grid[j][i] && this.hold instanceof equip) {
+            this.equiping(this.board.grid[j][i])
+          } else {
+            this.setChess(j, i)
+          }
         }
       }
+      // click hand
       info = PosInfo.hand
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
         if ((x-(this.w/2-info.w/2)) % (info.sp+info.w1) < info.sp || (y-info.marTop) % (info.w1+info.sp) < info.sp) return // blank space
         let index = Math.floor((x-(this.w/2-info.w/2))/(info.sp+info.w1))
-        let cards = this.hand.cards
-        let tmp = this.hold
-        this.hold = cards[index]
-        cards[index] = tmp
+        if (this.hand.cards[index] && this.hold instanceof equip) {
+          this.equiping(this.hand.cards[index])
+        } else {
+          let cards = this.hand.cards
+          let tmp = this.hold
+          this.hold = cards[index]
+          cards[index] = tmp
+        }
       }
+      // click store
       info = PosInfo.store
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>this.h-info.h && y<this.h) {
         let left = x-(this.w/2-info.w/2)
@@ -161,6 +179,16 @@ export default {
         else {
           let buy = Math.floor(left / (info.w1+info.sp)) - 1
           this.buyCard(buy)
+        }
+      }
+      //click equip
+      info = PosInfo.equips
+      if (x>info.l && x<info.l+info.h && y>info.t && y<info.t+info.h*this.equips.length) {
+        let index = Math.floor((y-info.t)/info.h)
+        if (!this.hold || this.hold instanceof equip) {
+          let tmp = this.hold
+          this.hold = this.equips[index]
+          this.equips[index] = tmp
         }
       }
     },
@@ -296,6 +324,12 @@ export default {
         } else if (util[i].status.ready) {
           util[i].effect()
         }
+      }
+    },
+    equiping (chess) {
+      if (chess) {
+        chess.equips.push(this.hold)
+        this.hold = undefined
       }
     },
     // if chess cannot move, return false
@@ -682,6 +716,7 @@ export default {
       obj.pos = undefined
       obj.status = {}
       obj.camp = camp
+      obj.equips = []
       return obj
     },
     createUtilAttack (src, tgt) {
@@ -780,6 +815,13 @@ export default {
                 chess.buff[i].draw(ctx, cenL+biasX, cenT+biasY)
               }
             }
+            for (let i in chess.equips) {
+              let img = new Image()
+              img.src = chess.equips[i].src
+              let imgR = info.w2/2*chess.size
+              let equipR = info.wEquip * chess.size
+              ctx.drawImage(img, cenL-imgR+biasX+equipR*i, cenT+imgR+biasY, equipR, equipR)
+            }
           }
         }
       }
@@ -801,10 +843,15 @@ export default {
         let cardL = this.w / 2 + (i-4-0.5)*cw+(i-4)*sp
         let cardT = handT + sp
         ctx.strokeRect(cardL, cardT, cw, cw)
-        if (cards[i] != undefined) {
+        if (cards[i]) {
           let img = new Image()
           img.src = cards[i].src
           ctx.drawImage(img, cardL, cardT, cw, cw)
+          for (let j in cards[i].equips) {
+            let img = new Image()
+            img.src = cards[i].equips[j].src
+            ctx.drawImage(img, cardL+info.wEquip*j, cardT+cw-info.wEquip, info.wEquip, info.wEquip)
+          }
         }
       }
     },
@@ -858,7 +905,17 @@ export default {
         let img = new Image()
         img.src = this.hold.src
         let w = PosInfo.hand.w1
-        ctx.drawImage(img, this.mouse.x-w/2, this.mouse.y-w/2, w, w)
+        let wEquip = PosInfo.hand.wEquip
+        let l = this.mouse.x-w/2
+        let t = this.mouse.y-w/2
+        ctx.drawImage(img, l, t, w, w)
+        if (this.hold instanceof chess) {
+          for (let j in this.hold.equips) {
+            let img = new Image()
+            img.src = this.hold.equips[j].src
+            ctx.drawImage(img, l+wEquip*j, t+w-wEquip, wEquip, wEquip)
+          }
+        }
       }
     },
     drawDamageRecord () {
@@ -894,6 +951,20 @@ export default {
           ctx.fillText(ClassInfo[c].stage[s], info.l+2*info.spw+25*(s), info.t+info.sph*i)
         }
         i++
+      }
+    },
+    drawEquips () {
+      let ctx = this.ctx
+      let equips = this.equips
+      let info = PosInfo.equips
+      for (let i in equips) {
+        ctx.strokeStyle = '#999999'
+        ctx.strokeRect(info.l, info.t+info.h*i, info.h, info.h)
+        if (equips[i]) {
+          let img = new Image()
+          img.src = equips[i].src
+          ctx.drawImage(img, info.l, info.t+info.h*i, info.h, info.h)
+        }
       }
     }
   }
