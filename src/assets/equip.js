@@ -17,8 +17,7 @@ export default [
       this.chess = chess
       let buff0 = new buff_val(this.vm, this.chess, 'as', 0.4, 1, '攻速_疾射火炮')
       let buff1 = new buff_val(this.vm, this.chess, 'range', 1, 1, '射程_疾射火炮')
-      this.chess.buff.concat([buff0, buff1])
-      console.log(this.chess.buff)
+      this.chess.buff = this.chess.buff.concat([buff0, buff1])
     }
   }
 ]

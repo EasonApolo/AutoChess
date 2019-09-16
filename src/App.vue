@@ -7,14 +7,16 @@
     <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
       {{showChess.name}}
       <div class='attr'>
-        <div>ad:</div><div>{{showChess.ad}}</div>
-        <div>as:</div><div>{{showChess.as}}</div>
-        <div>range:</div><div>{{showChess.range}}</div>
-        <div>armor:</div><div>{{showChess.armor}}</div>
-        <div>mr:</div><div>{{showChess.mr}}</div>
+        <div>ad:</div><div>{{showChess.ad.toFixed(0)}}</div>
+        <div>as:</div><div>{{showChess.as.toFixed(2)}}</div>
+        <div>range:</div><div>{{showChess.range.toFixed(0)}}</div>
+        <div>armor:</div><div>{{showChess.armor.toFixed(0)}}</div>
+        <div>mr:</div><div>{{showChess.mr.toFixed(0)}}</div>
       </div>
-      <div v-for='(buff,i) in showChess.buff' :key='i'>
-        {{buff.name}}
+      <div class='buff'>
+        <div v-for='(buff,i) in showChess.buff' :key='i'>
+          {{buff.name}}
+        </div>
       </div>
     </div>
   </div>
@@ -1047,6 +1049,16 @@ body {
   display: flex;
   flex-wrap: wrap;
   text-align: left;
+  div {
+    flex: 0 0 auto;
+    width: 25%;
+  }
+}
+.buff {
+  display: flex;
+  flex-wrap: wrap;
+  text-align: left;
+  font-size: .25rem;
   div {
     flex: 0 0 auto;
     width: 25%;
