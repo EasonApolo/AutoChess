@@ -1,8 +1,21 @@
 <template>
   <div id="app">
-    <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @contextmenu.prevent="click"></canvas>
+    <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
     <div v-for='src in allsrc' :key='src' style='display:none'>
       <img :src='src'>
+    </div>
+    <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
+      {{showChess.name}}
+      <div class='attr'>
+        <div>ad:</div><div>{{showChess.ad}}</div>
+        <div>as:</div><div>{{showChess.as}}</div>
+        <div>range:</div><div>{{showChess.range}}</div>
+        <div>armor:</div><div>{{showChess.armor}}</div>
+        <div>mr:</div><div>{{showChess.mr}}</div>
+      </div>
+      <div v-for='(buff,i) in showChess.buff' :key='i'>
+        {{buff.name}}
+      </div>
     </div>
   </div>
 </template>
@@ -26,7 +39,7 @@ export default {
       ctx: undefined,
       w: 0,
       h: 0,
-      mouse: {x:undefined, y:undefined},
+      mouse: {x:undefined, y:undefined},  // this coordinate is doubled
       game: {
         turn: 0,
         gold: 100,
@@ -51,6 +64,8 @@ export default {
       allsrc: [],
       queue: [],
       util: [],
+      showChess: undefined,
+      showPos: undefined
     }
   },
   created () {
@@ -111,51 +126,55 @@ export default {
     /*
       user actions
       */
+    mousemove (e) {
+      if (this.hold) {
+        this.showChess = undefined
+        this.showPos = undefined
+        return
+      }
+      let x = e.clientX*2
+      let y = e.clientY*2
+      let pos = this.getPosByCoord(x, y)
+      if (pos) {
+        let [j, i] = pos
+        if (this.board.grid[j][i]) {
+          this.showChess = this.board.grid[j][i]
+          this.showPos = [x/2+1+'px', y/2+1+'px']
+          return
+        }
+      }
+      this.showChess = undefined
+      this.showPos = undefined
+    },
     click (e) {
       let x = e.clientX*2
       let y = e.clientY*2
       // click board
-      let info = PosInfo.board
-      if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
-        // x,y relative position to board centre
-        let rx = x-this.w/2
-        let ry = y-(info.h/2+info.marTop)
-        let w = info.w1
-        let k = Math.tan(Math.PI/6)
-        let ratio = info.ratio
-        // a,b,c are 3d index
-        let a = Math.floor((ry+k*rx)/w)+8
-        let b = Math.floor((ry-k*rx+w/2)/w)+7
-        let c = Math.floor((rx+ratio/2*w)/(ratio*w))+7
-        // j row index, i col index
-        let j = Math.floor((a+b-7+1)/3)
-        let i = Math.floor((c-(j%2+0.5)+1)/2)
-        if (e.button == 2) {
-          let grids = this.board.grid
-          if (grids[j][i]) {
-            console.log(grids[j][i].buff)
-          }
-          return
-        }
-        // out of grids
-        else if (i < 0 || i > 6 || j < 0 || j > 5) return
-        else {
-          // if hold a equipment, equit it to the chess
-          if (this.board.grid[j][i] && this.hold instanceof equip) {
+      let pos = this.getPosByCoord(x, y)
+      if (pos) {
+        let [j, i] = pos
+        // if hold a equipment, equit it to the chess
+        if (this.hold instanceof equip) {
+          if (this.board.grid[j][i]) {
+            console.log('equip')
             this.equiping(this.board.grid[j][i])
-          } else {
-            this.setChess(j, i)
           }
+        } else {
+          console.log('aaa')
+          this.setChess(j, i)
         }
       }
       // click hand
-      info = PosInfo.hand
+      let info = PosInfo.hand
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
         if ((x-(this.w/2-info.w/2)) % (info.sp+info.w1) < info.sp || (y-info.marTop) % (info.w1+info.sp) < info.sp) return // blank space
         let index = Math.floor((x-(this.w/2-info.w/2))/(info.sp+info.w1))
-        if (this.hand.cards[index] && this.hold instanceof equip) {
-          this.equiping(this.hand.cards[index])
-        } else {
+        if (this.hold instanceof equip) {
+          if (this.hand.cards[index]) {
+            this.equiping(this.hand.cards[index])
+          }
+        }
+        else {
           let cards = this.hand.cards
           let tmp = this.hold
           this.hold = cards[index]
@@ -501,6 +520,27 @@ export default {
       game inline functions
       */
     // orient start: top-left 0
+    getPosByCoord (x, y) {
+      let info = PosInfo.board
+      if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
+        // x,y relative position to board centre
+        let rx = x-this.w/2
+        let ry = y-(info.h/2+info.marTop)
+        let w = info.w1
+        let k = Math.tan(Math.PI/6)
+        let ratio = info.ratio
+        // a,b,c are 3d index
+        let a = Math.floor((ry+k*rx)/w)+8
+        let b = Math.floor((ry-k*rx+w/2)/w)+7
+        let c = Math.floor((rx+ratio/2*w)/(ratio*w))+7
+        // j row index, i col index
+        let j = Math.floor((a+b-7+1)/3)
+        let i = Math.floor((c-(j%2+0.5)+1)/2)
+        // out of grids
+        if (i < 0 || i > 6 || j < 0 || j > 5) return
+        return [j, i]
+      }
+    },
     getOrient (r1,c1, r2,c2) {
       if (r1===r2) {
         return c1<c2?2:5
@@ -980,6 +1020,7 @@ body {
   height: 100%;
 }
 #app {
+  position: relative;
   font-family: 'Avenir', Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -993,4 +1034,22 @@ body {
 //     opacity: 1;
 //   }
 // }
+.show {
+  position: fixed;
+  padding: 5px;
+  width: 10rem;
+  height: 6rem;
+  font-size: 0.75rem;
+  color: #4d373a;
+  background-color: #d3cdbf;
+}
+.attr {
+  display: flex;
+  flex-wrap: wrap;
+  text-align: left;
+  div {
+    flex: 0 0 auto;
+    width: 25%;
+  }
+}
 </style>

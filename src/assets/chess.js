@@ -33,6 +33,7 @@ export class buff_regainMana extends buff {
 export class buff_lucian_nextAttackWith extends buff {
   constructor (vm, src, tgt) {
     super(vm, src)
+    this.name = '圣枪银弹'
     this.tgt = tgt
     this.base = [100, 225, 350]
   }
@@ -51,6 +52,7 @@ export class buff_lucian_nextAttackWith extends buff {
 export class buff_tristana_explosiveSpark extends buff {
   constructor (vm, src, tgt) {
     super(vm, src)
+    this.name = '爆炸火花'
     this.stage = 0
     this.tgt = tgt
     this.base = [150, 225, 300]
@@ -95,11 +97,14 @@ export class buff_tristana_explosiveSpark extends buff {
 }
 // type: ad / hp / armor / mr / as
 export class buff_val extends buff {
-  constructor (vm, src, type, val, rate=0) {
+  constructor (vm, src, type, val, rate=0, name=undefined) {
     super(vm, src)
     this.type = type
     this.val = val
     this.rate = rate
+    if (name) {
+      this.name = name
+    }
   }
   response (type) {
     if (type === this.type) {
@@ -111,6 +116,7 @@ export class buff_val extends buff {
 export class buff_graves_buckshot extends buff {
   constructor (vm, src) {
     super(vm, src)
+    this.name = '大号铅弹'
   }
   response (type, ...args) {
     if (['attack'].includes(type)) {
@@ -138,6 +144,7 @@ export class buff_class_gun extends buff {
     super(vm, src)
     this.base = [1, 2, 3]
     this.extra = this.base[stage]
+    this.name = '枪手'
   }
   response(type, ...args) {
     if (['attack'].includes(type)) {
@@ -192,6 +199,7 @@ export class chess {
   equip (e) {
     if (this.equips.length < 3) {
       this.equips.push(e)
+      e.equipTo(this)
     }
   }
   get ad () {
@@ -222,10 +230,12 @@ export class chess {
     let rate = 1
     for (let i in this.buff) {
       let res = this.buff[i].response('as')
-      if (res && res[1]) {
-        rate += res[0]
-      } else {
-        console.log('myError：as buff not rate')
+      if (res) {
+        if (res[1]) {
+          rate += res[0]
+        } else {
+          console.log('myError：as buff not rate')
+        }
       }
     }
     return this._as * rate
@@ -237,10 +247,12 @@ export class chess {
     let rate = 1
     for (let i in this.buff) {
       let res = this.buff[i].response('range')
-      if (res && res[1]) {
-        rate += res[0]
-      } else {
-        console.log('myError：range buff not rate')
+      if (res) {
+        if (res[1]) {
+          rate += res[0]
+        } else {
+          console.log('myError：as buff not rate')
+        }
       }
     }
     return this._range * rate
@@ -312,7 +324,6 @@ export default [
       this.lvl = 0
       this.buff = [
       ]
-      // this.buff.push(new buff_val(this.vm, this, 'ad', 100))
       this.spell_pre = 0
       this.spell = function relentless_pursuit () {
         if (this.status.target) {

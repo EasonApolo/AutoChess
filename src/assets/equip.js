@@ -12,13 +12,13 @@ export default [
       super(vm)
       this.src = 'rapid_fire_cannon.png'
       this.name = '疾射火炮'
-      this.buffs = [new buff_val(this.vm, )]
     }
     equipTo (chess) {
       this.chess = chess
-      let buff0 = new buff_val(this.vm, this.chess, 'as', 0.4, 1)
-      let buff1 = new buff_val(this.vm, this.chess, 'range', 1, 1)
+      let buff0 = new buff_val(this.vm, this.chess, 'as', 0.4, 1, '攻速_疾射火炮')
+      let buff1 = new buff_val(this.vm, this.chess, 'range', 1, 1, '射程_疾射火炮')
       this.chess.buff.concat([buff0, buff1])
+      console.log(this.chess.buff)
     }
   }
 ]
