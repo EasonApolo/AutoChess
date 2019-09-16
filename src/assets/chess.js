@@ -233,6 +233,21 @@ export class chess {
   set as (as) {
     this._as = as
   }
+  get range () {
+    let rate = 1
+    for (let i in this.buff) {
+      let res = this.buff[i].response('range')
+      if (res && res[1]) {
+        rate += res[0]
+      } else {
+        console.log('myError：range buff not rate')
+      }
+    }
+    return this._range * rate
+  }
+  set range (range) {
+    this._range = range
+  }
 }
 
 // chess class definitions:
@@ -251,7 +266,7 @@ export default [
       this._ad = 50,
       this._as = 0.65,
       this.sp = 75,
-      this.range = 4,
+      this._range = 4,
       this.armor = 20,
       this.mr = 20,
       this.util = {
