@@ -1,4 +1,4 @@
-import { util_obama_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -30,7 +30,7 @@ export class buff_regainMana extends buff {
   }
 }
 
-export class buff_obama_nextAttackWith extends buff {
+export class buff_lucian_nextAttackWith extends buff {
   constructor (vm, src, tgt) {
     super(vm, src)
     this.tgt = tgt
@@ -40,7 +40,7 @@ export class buff_obama_nextAttackWith extends buff {
     if (type === 'attack') {
       setTimeout(() => {
         if (this.tgt) {
-          new util_obama_second_bullet(this.vm, this.src, this.tgt, this.base[this.src.lvl])
+          new util_lucian_second_bullet(this.vm, this.src, this.tgt, this.base[this.src.lvl])
         }
       }, 300)
       removeFromArr(this.src.buff, this)
@@ -189,6 +189,11 @@ export class chess {
     }
     this.status.dead = true
   }
+  equip (e) {
+    if (this.equips.length < 3) {
+      this.equips.push(e)
+    }
+  }
   get ad () {
     let rate = 1
     let bonus = 0
@@ -213,6 +218,21 @@ export class chess {
   set name (name) {
     this._name = name
   }
+  get as () {
+    let rate = 1
+    for (let i in this.buff) {
+      let res = this.buff[i].response('as')
+      if (res && res[1]) {
+        rate += res[0]
+      } else {
+        console.log('myError：as buff not rate')
+      }
+    }
+    return this._as * rate
+  }
+  set as (as) {
+    this._as = as
+  }
 }
 
 // chess class definitions:
@@ -229,7 +249,7 @@ export default [
       this.hp = 550,
       this.mp = 50,
       this._ad = 50,
-      this.as = 0.65,
+      this._as = 0.65,
       this.sp = 75,
       this.range = 4,
       this.armor = 20,
@@ -253,18 +273,18 @@ export default [
     }
   },
 
-  class Obama extends chess {
+  class Lucian extends chess {
     constructor (vm) {
       super(vm)
       this.id = 1,
       this._name = '圣枪游侠',
       this.size = 0.8,
       this.cat = [0, 2],
-      this.src = 'Obama_d.png',
+      this.src = 'Lucian_d.png',
       this.hp = 550,
       this.mp = 35,
       this._ad = 65,
-      this.as = 0.65,
+      this._as = 0.65,
       this.range = 3,
       this.sp = 60,
       this.armor = 20,
@@ -294,7 +314,7 @@ export default [
             this.status.attack = undefined
             this.status.spell = undefined
             this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: avails[randInt(avails.length)]}
-            this.buff.push(new buff_obama_nextAttackWith(this.vm, this, this.status.target))
+            this.buff.push(new buff_lucian_nextAttackWith(this.vm, this, this.status.target))
           }
         }
       }
@@ -313,7 +333,7 @@ export default [
       this.hp = 700,
       this.mp = 25,
       this._ad = 75,
-      this.as = 1,
+      this._as = 1,
       this.range = 1,
       this.sp = 60,
       this.armor = 35,
@@ -363,7 +383,7 @@ export default [
       this.hp = 450,
       this.mp = 0,
       this._ad = 55,
-      this.as = 0.55,
+      this._as = 0.55,
       this.range = 1,
       this.sp = 60,
       this.armor = 30,

@@ -29,3 +29,76 @@
 注意for循环的index是字符串，计算时会变成NaN
 
 注意单次buff生效时先移除buff，否则buff生效时可能又会触发这个buff导致死循环（比如damage）
+
+## All
+
+| 事项 | 完成 | 事项 | 完成 |
+| ---- | ---- | ---- |
+| Aatrox |  | Ahri |  |
+| Akali |  | Anivia |  |
+| Ashe |  | Aurelion Sol |  |
+| Blitzcrank |  | Brand |  |
+| Braum |  | Chogath |  |
+| Darius |  | Draven |  |
+| Elise |  | Evelynn |  |
+| Fiora |  | Gangplank |  |
+| Garen |  | Gnar |  |
+| Graves | √ | Karthus |  |
+| Kassadin |  | Katarina |  |
+| Kayle |  | Kennen |  |
+| Khazix |  | Kindred |  |
+| Leona |  | Lissandra |  |
+| Lucian | √ | Lulu |  |
+| Miss Fortune |  | Mordekaiser |  |
+| Morgana |  | Nidalee |  |
+| Poppy |  | Pyke |  |
+| RekSai |  | Rengar |  |
+| Sejuani |  | Shen |  |
+| Shyvana |  | Swain |  |
+| Tristana | √ | Varus |  |
+| Vayne |  | Veigar |  |
+| Volibear |  | Warwick |  |
+| Yasuo | √ | Zed |  |
+| Twisted Fate |  | Camille |  |
+| Jayce |  | Jinx |  |
+| Vi |  | Pantheon |  |
+
+| 事项 | 完成 | 事项 | 完成 |
+| ---- | ---- | ---- |
+| Demon |  | Dragon |  |
+| Exile |  | Glacial |  |
+| Hextech |  | Imperial |  |
+| Noble |  | Ninja |  |
+| Pirate |  | Phantom |  |
+| Robot |  | Void |  |
+| Wild |  | Yordle |  |
+| Assasin |  | Blademaster |  |
+| Brawler |  | Elementalist |  |
+| Guardian |  | Gunslinger | √ |
+| Knight |  | Ranger |  |
+| Shapeshifter |  | Sorcerer |  |
+
+| 事项 | 完成 | 事项 | 完成 |
+| ---- | ---- | ---- |
+| B.F. Sword |  | Chain Vest |  |
+| Giant's Belt |  | Needlessly Large Rod |  |
+| Negatron Cloak |  | Recurve Bow |  |
+| Spatula |  | Tear of the Goddess |  |
+| Blade of the Ruined King |  | Bloodthirster |  |
+| Cursed Blade |  | Darkin |  |
+| Dragon's Claw |  | Force of Nature |  |
+| Frozen Heart |  | Frozen Mallet |  |
+| Guardian Angel |  | Guinsoo's Rageblade |  |
+| Hextech Gunblade |  | Hush |  |
+| Infinity Edge |  | Ionic Spark |  |
+| Knight's Vow |  | Locket of the Iron Solari |  |
+| Luden's Echo |  | Morellonomicon |  |
+| Phantom Dancer |  | Rabadon's Deathcap |  |
+| Rapid Firecannon |  | Red Buff |  |
+| Redemption |  | Runaan's Hurricane |  |
+| Seraph's Embrace |  | Spear of Shojin |  |
+| Statikk Shiv |  | Sword Breaker |  |
+| Sword of the Devine |  | Thornmail |  |
+| Titanic Hydra |  | Warmog's Armor |  |
+| Youmuu's Ghostblade |  | Yuumi |  |
+| Zeke's Herald |  | Zephyr |  |

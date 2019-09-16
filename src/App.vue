@@ -327,8 +327,8 @@ export default {
       }
     },
     equiping (chess) {
-      if (chess) {
-        chess.equips.push(this.hold)
+      if (chess && this.hold instanceof equip) {
+        chess.equip(this.hold)
         this.hold = undefined
       }
     },

@@ -45,7 +45,7 @@ export class util_attack extends util_tgt {
     ctx.fillRect(xbase+this.coord[0]-5, ybase+this.coord[1]-5, 10, 10)
   }
 }
-export class util_obama_second_bullet extends util_tgt {
+export class util_lucian_second_bullet extends util_tgt {
   constructor (vm, src, tgt, damage) {
     super(vm, src, tgt)
     this.sp = src.util.sp
