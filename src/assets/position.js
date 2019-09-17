@@ -44,5 +44,9 @@ export default {
         'l': 100,
         't': 600,
         'h': 70
+    },
+    'schedule': {
+        't': 50,
+        'arcR': 50,
     }
 }

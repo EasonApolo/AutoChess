@@ -1,21 +1,30 @@
 <template>
   <div id="app">
-    <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
-    <div v-for='src in allsrc' :key='src' style='display:none'>
-      <img :src='src'>
-    </div>
-    <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
-      {{showChess.name}}
-      <div class='attr'>
-        <div>ad:</div><div>{{showChess.ad.toFixed(0)}}</div>
-        <div>as:</div><div>{{showChess.as.toFixed(2)}}</div>
-        <div>range:</div><div>{{showChess.range.toFixed(0)}}</div>
-        <div>armor:</div><div>{{showChess.armor.toFixed(0)}}</div>
-        <div>mr:</div><div>{{showChess.mr.toFixed(0)}}</div>
+    <div v-if='entry.inentry' class='entry'>
+      <div class='block'>
+        <input v-model='entry.name' placeholder="name"><br>
+        <button @click='fetchRooms'>寻找房间</button>
+        <button @click='createRoom'>创建房间</button>
       </div>
-      <div class='buff'>
-        <div v-for='(buff,i) in showChess.buff' :key='i'>
-          {{buff.name}}
+    </div>
+    <div v-if='!entry.inentry' class='game'>
+      <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
+      <div v-for='src in allsrc' :key='src' style='display:none'>
+        <img :src='src'>
+      </div>
+      <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
+        {{showChess.name}}
+        <div class='attr'>
+          <div>ad:</div><div>{{showChess.ad.toFixed(0)}}</div>
+          <div>as:</div><div>{{showChess.as.toFixed(2)}}</div>
+          <div>range:</div><div>{{showChess.range.toFixed(0)}}</div>
+          <div>armor:</div><div>{{showChess.armor.toFixed(0)}}</div>
+          <div>mr:</div><div>{{showChess.mr.toFixed(0)}}</div>
+        </div>
+        <div class='buff'>
+          <div v-for='(buff,i) in showChess.buff' :key='i'>
+            {{buff.name}}
+          </div>
         </div>
       </div>
     </div>
@@ -32,11 +41,16 @@ import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
 import EquipInfo, { equip } from './assets/equip'
+import ScriptInfo from './assets/script'
 
 export default {
   name: 'app',
   data () {
     return {
+      entry: {
+        inentry: true,
+        name: ''
+      },
       canvas: undefined,
       ctx: undefined,
       w: 0,
@@ -51,6 +65,7 @@ export default {
         damageRecord: [],
         grave: [],
         classes: {},
+        schedule: {},
       },
       hold: undefined,
       board: {
@@ -78,28 +93,56 @@ export default {
     this.initBoard()
   },
   mounted () {
-    this.w = document.documentElement.clientWidth*2
-    this.h = document.documentElement.clientHeight*2
-    this.canvas = document.getElementById('canvas')
-    this.ctx = this.canvas.getContext('2d')
-    this.deal()
-    this.main()
-    setTimeout(() => {
-      console.log('set opponent')
-      this.setOppChess()
-      this.equips[0] = new EquipInfo[0]()
-      this.equips[1] = new EquipInfo[0]()
-      this.equips[2] = new EquipInfo[0]()
-    }, 1000)
-    setTimeout(() => {
-      console.log('round start')
-      this.startRound()
-    }, 4000)
   },
   methods: {
     /*
       main thread
       */
+    createRoom () {
+      fetch('http://47.106.171.107/rooms/create', ).then(res => res.json()).then(json => {
+        console.log(json)
+      })
+    },
+    fetchRooms () {
+      fetch('http://47.106.171.107/rooms/list').then(res => res.json()).then(json => {
+        console.log(json)
+      })
+    },
+    startGame () {
+      this.w = document.documentElement.clientWidth*2
+      this.h = document.documentElement.clientHeight*2
+      this.canvas = document.getElementById('canvas')
+      this.ctx = this.canvas.getContext('2d')
+      this.deal()
+      this.main()
+      this.equips[0] = new EquipInfo[0]()
+      this.equips[1] = new EquipInfo[0]()
+      this.equips[2] = new EquipInfo[0]()
+    },
+    schedule () {
+      let s = this.game.schedule
+      if (s.status === 'prepare') {
+        if (s.p < s.pn) {
+          s.p ++
+        } else {
+          this.game.schedule = {status: 'setting', p: 0, pn: 300}
+          this.setOppChess()
+        }
+      } else if (s.status === 'setting') {
+        if (s.p < s.pn) {
+          s.setting ++
+        } else {
+          this.game.schedule = {status: 'battle', p: 0}
+          this.startRound()
+        }
+      } else if (s.status === 'battle') {
+        if (s.p === 1) {
+          this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+        }
+      } else {
+        this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+      }
+    },
     main () {
       this.clearAll()
       this.drawBoard()
@@ -110,9 +153,11 @@ export default {
       this.drawDamageRecord()
       this.drawclasses()
       this.drawEquips()
+      this.drawSchedule()
       for (let i in this.queue) {
         this.queue[i]()
       }
+      this.schedule()
       window.requestAnimationFrame(this.main)
     },
     /*
@@ -158,11 +203,9 @@ export default {
         // if hold a equipment, equit it to the chess
         if (this.hold instanceof equip) {
           if (this.board.grid[j][i]) {
-            console.log('equip')
             this.equiping(this.board.grid[j][i])
           }
         } else {
-          console.log('aaa')
           this.setChess(j, i)
         }
       }
@@ -447,7 +490,9 @@ export default {
       }
       if (camp0 === 0) {console.log('you lose')}
       else if (camp1 === 0) {console.log('you win')}
-      removeFromArr(this.queue, this.checkRemain)
+      if (this.game.schedule.status === 'battle') {
+        this.game.schedule.p = 1
+      }
     },
     // initialize all chesses at this round start
     initAllChess () {
@@ -1008,6 +1053,21 @@ export default {
           ctx.drawImage(img, info.l, info.t+info.h*i, info.h, info.h)
         }
       }
+    },
+    drawSchedule () {
+      let ctx = this.ctx
+      let sch = this.game.schedule
+      let info = PosInfo.schedule
+      if (sch.status === 'prepare') {
+        ctx.strokeStyle = '#555'
+        ctx.lineWidth = 5
+        ctx.beginPath()
+        ctx.arc(this.w/2, info.t, info.arcR, Math.PI/2-(1-sch.p/sch.pn)*Math.PI*2, Math.PI/2)
+        ctx.stroke()
+        ctx.lineWidth = 1
+      } else if (sch.status === 'setting') {
+      } else if (sch.status === 'battle') {
+      }
     }
   }
 }
@@ -1030,12 +1090,33 @@ body {
   text-align: center;
   color: #2c3e50;
 }
-// #canvas {
-//   opacity: 0;
-//   &:hover {
-//     opacity: 1;
-//   }
-// }
+button {
+  outline: none;
+  background-color: #EEE;
+  border: none;
+  padding: .5rem;
+  cursor: pointer;
+}
+input {
+  outline: none;
+  padding: .5rem;
+  border: #ccc 1px solid;
+}
+.entry {
+  height: 100%;
+  text-align: left;
+  .block {
+    display: inline-block;
+    width: 25%;
+    height: 100%;
+    padding-top: 15rem;
+    border-right: 1px solid #eee;
+    text-align: center;
+    button {
+      margin-top: 1rem;
+    }
+  }
+}
 .show {
   position: fixed;
   padding: 5px;
