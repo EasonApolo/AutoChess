@@ -2,9 +2,16 @@
   <div id="app">
     <div v-if='entry.inentry' class='entry'>
       <div class='block'>
-        <input v-model='entry.name' placeholder="name"><br>
-        <button @click='fetchRooms'>寻找房间</button>
-        <button @click='createRoom'>创建房间</button>
+        <input v-model='entry.vname' placeholder="name" :disabled='entry.name'><br>
+        <button @click='entry.name=entry.vname' v-show='!entry.name'>确认名称</button>
+        <button @click='createRoom' v-show='entry.name'>创建房间</button>
+        <div class='block-list' v-show='entry.name'>
+          <div v-for="room in entry.rooms" :key='room.id' :class='{disable:room.users.length>=2}' @click='joinRoom(room.id)'>
+            <span>{{room.users[0].name}}的房间</span>
+            <span v-if="room.users[1]">{{room.users[1].name}}</span>
+            <span>第{{room.stage}}回合</span>
+          </div>
+        </div>
       </div>
     </div>
     <div v-if='!entry.inentry' class='game'>
@@ -49,7 +56,8 @@ export default {
     return {
       entry: {
         inentry: true,
-        name: ''
+        vname: '',
+        rooms: undefined
       },
       canvas: undefined,
       ctx: undefined,
@@ -93,19 +101,39 @@ export default {
     this.initBoard()
   },
   mounted () {
+    let fetchID = setInterval(this.fetchRooms, 3000)
   },
   methods: {
     /*
       main thread
       */
+    joinRoom (id) {
+      let formData = new FormData()
+      formData.append('name', this.entry.name)
+      formData.append('roomid', id)
+      fetch('http://47.106.171.107/rooms/join', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+      })
+    },
     createRoom () {
-      fetch('http://47.106.171.107/rooms/create', ).then(res => res.json()).then(json => {
-        console.log(json)
+      let formData = new FormData()
+      formData.append('name', this.entry.name)
+      fetch('http://47.106.171.107/rooms/create', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        if (json) {
+          this.entry.rooms = json
+        }
       })
     },
     fetchRooms () {
       fetch('http://47.106.171.107/rooms/list').then(res => res.json()).then(json => {
-        console.log(json)
+        if (json) {
+          this.entry.rooms = json
+        }
       })
     },
     startGame () {
@@ -1106,14 +1134,28 @@ input {
   height: 100%;
   text-align: left;
   .block {
-    display: inline-block;
-    width: 25%;
-    height: 100%;
-    padding-top: 15rem;
-    border-right: 1px solid #eee;
+    padding-top: 3rem;
+    border-right: 1px solid #ddd;;
     text-align: center;
     button {
       margin-top: 1rem;
+    }
+  }
+  .block-list {
+    div {
+      padding: 2rem;
+      text-align: left;
+      border-top: 1px solid #ddd;
+      cursor: pointer;
+      &:hover {
+        background-color: #fafafa;
+      }
+      span {
+        margin-right: 2rem;
+      }
+    }
+    .disable {
+      background-color: #eee;
     }
   }
 }
