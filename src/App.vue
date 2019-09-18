@@ -49,7 +49,7 @@
           <div>mr:</div><div>{{showChess.mr.toFixed(0)}}</div>
         </div>
         <div class='buff'>
-          <div v-for='(buff,i) in showChess.buff' :key='i'>
+          <div v-for='(buff, index) in showChess.buff' :key='index'>
             {{buff.name}}
           </div>
         </div>
@@ -84,6 +84,7 @@ export default {
         inroom: false,
         room: undefined,
       },
+      fetchID: undefined,
       canvas: undefined,
       ctx: undefined,
       w: 0,
@@ -126,7 +127,7 @@ export default {
     this.initBoard()
   },
   mounted () {
-    let fetchID = setInterval(this.fetchStatus, 3000)
+    this.fetchID = setInterval(this.fetchStatus, 3000)
   },
   methods: {
     /*
@@ -196,7 +197,8 @@ export default {
           this.entry.room = json
           if (json.start) {
             this.entry.inentry = false
-            this.startGame()
+            clearInterval(this.fetchID)
+            this.$nextTick(this.startGame)
           }
         }
       })
@@ -278,11 +280,14 @@ export default {
     schedule () {
       let s = this.game.schedule
       let grids = this.board.grid
+      let OK = false // flag for transimission done
+      // preparing stage
       if (s.status === 'prepare') {
         if (s.p < s.pn) {
           s.p ++
-        } else {
+        } else if (s.p === s.pn) {
           // collect data and upload to server
+          s.p ++
           let data = {grids:[], hand: [], equip: []}
           for (let r in grids) {
             for (let c in grids) {
@@ -319,16 +324,18 @@ export default {
           }).then(res => res.json()).then(json => {
             if (json.error) {
               this.entry.error = 'error: '+json.error
+            } else {
               this.game.schedule = {status: 'setting', p: 0, pn: 300}
             }
           })
           // this.setOppChess()
         }
+      // setting stage
       } else if (s.status === 'setting') {
         if (s.p < s.pn) {
-          s.setting ++
-        } else {
-          this.game.schedule = {status: 'battle', p: 0}
+          s.p ++
+        } else if (s.p === s.pn) {
+          s.p ++
           let formData = new FormData()
           formData.append('roomid', this.entry.room.id)
           formData.append('name', this.entry.name)
@@ -340,12 +347,13 @@ export default {
               this.entry.error = 'error: '+json.error
             } else {
               console.log(json)
-              this.startRound()
+              this.game.schedule = {status: 'battle', p: 0}
             }
           })
         }
       } else if (s.status === 'battle') {
         if (s.p === 1) {
+          this.game.schedule = {status: 'prepare', p: 0, pn: 300}
           let formData = new FormData()
           formData.append('roomid', this.entry.room.id)
           formData.append('name', this.entry.name)
@@ -356,8 +364,7 @@ export default {
             if (json.error) {
               this.entry.error = 'error: '+json.error
             } else {
-              json
-              this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+              console.log(json)
             }
           })
         }

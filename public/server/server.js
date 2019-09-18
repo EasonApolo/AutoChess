@@ -124,6 +124,7 @@ app.post('/data/upload', (req, res) => {
             for (let j in rooms[i].users) {
                 if (rooms[i].users[j].name === name) {
                     rooms[i].users[j].data = data
+                    res.end(JSON.stringify(rooms[i]))
                 }
             }
         }
@@ -136,6 +137,8 @@ app.post('/data/get', (req, res) => {
         if (rooms[i].id == id) {
             for (let j in rooms[i].users) {
                 if (rooms[i].users[j].name === name) {
+                    let data = rooms[i].users[1-j].data
+                    console.log(rooms[i].users)
                     res.end(JSON.stringify(data))
                 }
             }
