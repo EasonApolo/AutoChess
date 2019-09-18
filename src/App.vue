@@ -1,17 +1,37 @@
 <template>
   <div id="app">
     <div v-if='entry.inentry' class='entry'>
-      <div class='block'>
-        <input v-model='entry.vname' placeholder="name" :disabled='entry.name'><br>
-        <button @click='entry.name=entry.vname' v-show='!entry.name'>确认名称</button>
+      <div class='block' v-if="!entry.login">
+        <input v-model='entry.name' placeholder="name"><br>
+        <input v-model='entry.password' placeholder="password"><br>
+        <div v-if="entry.error">{{entry.error}}</div>
+        <button @click='login'>登录</button>
+        <button @click='signup'>注册</button>
+      </div>
+      <div class='block' v-if="entry.login && !entry.inroom">
+        {{entry.name}}
         <button @click='createRoom' v-show='entry.name'>创建房间</button>
+        <div v-if="entry.error">{{entry.error}}</div>
         <div class='block-list' v-show='entry.name'>
+        房间列表：
           <div v-for="room in entry.rooms" :key='room.id' :class='{disable:room.users.length>=2}' @click='joinRoom(room.id)'>
-            <span>{{room.users[0].name}}的房间</span>
+            <span>{{room.users[0].name}}</span>
             <span v-if="room.users[1]">{{room.users[1].name}}</span>
-            <span>第{{room.stage}}回合</span>
+            <span v-if="!room.start" class='span-right'>{{room.users.length}}/2 准备中</span>
+            <span v-if="room.start" class='span-right'>第{{room.stage}}回合</span>
           </div>
         </div>
+      </div>
+      <div class='block' v-if="entry.inroom">
+        {{entry.name}}
+        <div>房间中</div>
+        <div v-if="entry.error">{{entry.error}}</div>
+        <div class='block-list'>
+          玩家列表：
+          <div v-for="u in entry.room.users" :key='u.id'>{{u.name}}</div>
+        </div>
+        <button @click='startRoom' :disabled='entry.room.users.length<2'>开始</button>
+        <button @click='exitRoom'>退出</button>
       </div>
     </div>
     <div v-if='!entry.inentry' class='game'>
@@ -56,8 +76,13 @@ export default {
     return {
       entry: {
         inentry: true,
-        vname: '',
-        rooms: undefined
+        error: undefined,
+        name: '',
+        password: '',
+        login: false,
+        rooms: undefined,
+        inroom: false,
+        room: undefined,
       },
       canvas: undefined,
       ctx: undefined,
@@ -101,12 +126,81 @@ export default {
     this.initBoard()
   },
   mounted () {
-    let fetchID = setInterval(this.fetchRooms, 3000)
+    let fetchID = setInterval(this.fetchStatus, 3000)
   },
   methods: {
     /*
-      main thread
+      entry methods
       */
+    login () {
+      let formData = new FormData()
+      formData.append('name', this.entry.name)
+      formData.append('password', this.entry.password)
+      fetch('http://47.106.171.107/users/login', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        // response can be error or room(if user already in room)
+        if (json.error) {
+          this.entry.error = 'error: '+json.error
+        } else {
+          this.entry.login = true
+          if (json.start !== undefined) {
+            this.entry.inroom = true
+            this.entry.room = json
+          } 
+        }
+      })
+    },
+    signup () {
+      let formData = new FormData()
+      formData.append('name', this.entry.name)
+      formData.append('password', this.entry.password)
+      fetch('http://47.106.171.107/users/signup', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = 'error: ' + json.error
+        } else {
+          this.entry.login = true
+        }
+      })
+    },
+    fetchStatus () {
+      if (this.entry.login) {
+        if (!this.entry.inroom) {
+          this.fetchRooms()
+        } else if (this.entry.inroom) {
+          this.fetchRoom()
+        }
+      }
+    },
+    fetchRooms () {
+      fetch('http://47.106.171.107/rooms/list').then(res => res.json()).then(json => {
+        if (json) {
+          this.entry.rooms = json
+        }
+      })
+    },
+    fetchRoom () {
+      let formData = new FormData()
+      formData.append('roomid', this.entry.room.id)
+      fetch('http://47.106.171.107/room', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
+          this.entry.room = json
+          if (json.start) {
+            this.entry.inentry = false
+            this.startGame()
+          }
+        }
+      })
+    },
     joinRoom (id) {
       let formData = new FormData()
       formData.append('name', this.entry.name)
@@ -115,6 +209,28 @@ export default {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
+          this.entry.inroom = true
+          this.entry.room = json
+        }
+      })
+    },
+    exitRoom () {
+      let formData = new FormData()
+      formData.append('name', this.entry.name)
+      formData.append('roomid', this.entry.room.id)
+      fetch('http://47.106.171.107/rooms/exit', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
+          this.entry.inroom = false
+          this.entry.rooms = json
+        }
       })
     },
     createRoom () {
@@ -124,18 +240,30 @@ export default {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
-        if (json) {
-          this.entry.rooms = json
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
+          this.entry.inroom = true
+          this.entry.room = json
         }
       })
     },
-    fetchRooms () {
-      fetch('http://47.106.171.107/rooms/list').then(res => res.json()).then(json => {
-        if (json) {
-          this.entry.rooms = json
+    startRoom () {
+      let formData = new FormData()
+      formData.append('roomid', this.entry.room.id)
+      fetch('http://47.106.171.107/rooms/start', {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
         }
       })
     },
+    /*
+      game main thread
+      */
     startGame () {
       this.w = document.documentElement.clientWidth*2
       this.h = document.documentElement.clientHeight*2
@@ -149,23 +277,89 @@ export default {
     },
     schedule () {
       let s = this.game.schedule
+      let grids = this.board.grid
       if (s.status === 'prepare') {
         if (s.p < s.pn) {
           s.p ++
         } else {
-          this.game.schedule = {status: 'setting', p: 0, pn: 300}
-          this.setOppChess()
+          // collect data and upload to server
+          let data = {grids:[], hand: [], equip: []}
+          for (let r in grids) {
+            for (let c in grids) {
+              if (grids[r][c] !== undefined) {
+                let d = {pos:[r,c], id:grids[r][c].id, lvl: grids[r][c].lvl}
+                if (grids[r][c].equips) {
+                  d.equip = []
+                  for (let i in grids[r][c].equips) {
+                    d.equip.push(grids[r][c].equips[i].id)
+                  }
+                }
+                data.grids.push(d)
+              }
+            }
+          }
+          for (let i in this.hand) {
+            if (this.hand[i] !== undefined) {
+              data.hand.push(this.hand[i].id)
+            }
+          }
+          for (let i in this.equips) {
+            if (this.equips[i] !== undefined) {
+              data.equip.push(this.equips[i].id)
+            }
+          }
+          console.log(data)
+          let formData = new FormData()
+          formData.append('roomid', this.entry.room.id)
+          formData.append('name', this.entry.name)
+          formData.append('data', JSON.stringify(data))
+          fetch('http://47.106.171.107/data/upload', {
+            body: formData,
+            method: 'POST',
+          }).then(res => res.json()).then(json => {
+            if (json.error) {
+              this.entry.error = 'error: '+json.error
+              this.game.schedule = {status: 'setting', p: 0, pn: 300}
+            }
+          })
+          // this.setOppChess()
         }
       } else if (s.status === 'setting') {
         if (s.p < s.pn) {
           s.setting ++
         } else {
           this.game.schedule = {status: 'battle', p: 0}
-          this.startRound()
+          let formData = new FormData()
+          formData.append('roomid', this.entry.room.id)
+          formData.append('name', this.entry.name)
+          fetch('http://47.106.171.107/data/get', {
+            body: formData,
+            method: 'POST',
+          }).then(res => res.json()).then(json => {
+            if (json.error) {
+              this.entry.error = 'error: '+json.error
+            } else {
+              console.log(json)
+              this.startRound()
+            }
+          })
         }
       } else if (s.status === 'battle') {
         if (s.p === 1) {
-          this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+          let formData = new FormData()
+          formData.append('roomid', this.entry.room.id)
+          formData.append('name', this.entry.name)
+          fetch('http://47.106.171.107/data/get', {
+            body: formData,
+            method: 'POST',
+          }).then(res => res.json()).then(json => {
+            if (json.error) {
+              this.entry.error = 'error: '+json.error
+            } else {
+              json
+              this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+            }
+          })
         }
       } else {
         this.game.schedule = {status: 'prepare', p: 0, pn: 300}
@@ -1135,16 +1329,21 @@ input {
   text-align: left;
   .block {
     padding-top: 3rem;
-    border-right: 1px solid #ddd;;
     text-align: center;
     button {
-      margin-top: 1rem;
+      padding: 1rem 2rem;
+      margin: 1rem 1rem;
+      transition: .2s ease-in-out;
+      &:hover {
+        background-color: #ddd;
+      }
     }
   }
   .block-list {
+    padding: 2rem 2rem;
+    text-align: left;
     div {
       padding: 2rem;
-      text-align: left;
       border-top: 1px solid #ddd;
       cursor: pointer;
       &:hover {
@@ -1153,11 +1352,17 @@ input {
       span {
         margin-right: 2rem;
       }
+      .span-right {
+        float: right;
+      }
     }
     .disable {
       background-color: #eee;
     }
   }
+}
+.game {
+  height: 100%;
 }
 .show {
   position: fixed;

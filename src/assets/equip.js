@@ -11,6 +11,7 @@ export default [
     constructor (vm) {
       super(vm)
       this.src = 'rapid_fire_cannon.png'
+      this.id = 0
       this.name = '疾射火炮'
     }
     equipTo (chess) {
