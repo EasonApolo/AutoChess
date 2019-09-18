@@ -33,7 +33,7 @@
 ## All
 
 | 事项 | 完成 | 事项 | 完成 |
-| ---- | ---- | ---- |
+| ---- | ---- | ---- | ---- |
 | Aatrox |  | Ahri |  |
 | Akali |  | Anivia |  |
 | Ashe |  | Aurelion Sol |  |
@@ -64,7 +64,7 @@
 | Vi |  | Pantheon |  |
 
 | 事项 | 完成 | 事项 | 完成 |
-| ---- | ---- | ---- |
+| ---- | ---- | ---- | ---- |
 | Demon |  | Dragon |  |
 | Exile |  | Glacial |  |
 | Hextech |  | Imperial |  |
@@ -79,7 +79,7 @@
 | Shapeshifter |  | Sorcerer |  |
 
 | 事项 | 完成 | 事项 | 完成 |
-| ---- | ---- | ---- |
+| ---- | ---- | ---- | ---- |
 | B.F. Sword |  | Chain Vest |  |
 | Giant's Belt |  | Needlessly Large Rod |  |
 | Negatron Cloak |  | Recurve Bow |  |
