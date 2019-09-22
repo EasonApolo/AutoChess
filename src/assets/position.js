@@ -48,5 +48,11 @@ export default {
     'schedule': {
         't': 50,
         'arcR': 50,
+    },
+    'player': {
+        'l': 800,
+        't': 600,
+        'spw': 100,
+        'sph': 40
     }
 }

@@ -100,6 +100,7 @@ export default {
         grave: [],
         classes: {},
         schedule: {},
+        hp: 100
       },
       hold: undefined,
       board: {
@@ -116,7 +117,9 @@ export default {
       queue: [],
       util: [],
       showChess: undefined,
-      showPos: undefined
+      showPos: undefined,
+      // ip: this.ip+'',
+      ip: 'http://localhost:80/',
     }
   },
   created () {
@@ -137,7 +140,7 @@ export default {
       let formData = new FormData()
       formData.append('name', this.entry.name)
       formData.append('password', this.entry.password)
-      fetch('http://47.106.171.107/users/login', {
+      fetch(this.ip+'users/login', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -157,7 +160,7 @@ export default {
       let formData = new FormData()
       formData.append('name', this.entry.name)
       formData.append('password', this.entry.password)
-      fetch('http://47.106.171.107/users/signup', {
+      fetch(this.ip+'users/signup', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -178,7 +181,7 @@ export default {
       }
     },
     fetchRooms () {
-      fetch('http://47.106.171.107/rooms/list').then(res => res.json()).then(json => {
+      fetch(this.ip+'rooms/list').then(res => res.json()).then(json => {
         if (json) {
           this.entry.rooms = json
         }
@@ -187,7 +190,7 @@ export default {
     fetchRoom () {
       let formData = new FormData()
       formData.append('roomid', this.entry.room.id)
-      fetch('http://47.106.171.107/room', {
+      fetch(this.ip+'room', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -198,6 +201,7 @@ export default {
           if (json.start) {
             this.entry.inentry = false
             clearInterval(this.fetchID)
+            this.fetchID = setInterval(this.fetchGameStatus, 2000)
             this.$nextTick(this.startGame)
           }
         }
@@ -207,7 +211,7 @@ export default {
       let formData = new FormData()
       formData.append('name', this.entry.name)
       formData.append('roomid', id)
-      fetch('http://47.106.171.107/rooms/join', {
+      fetch(this.ip+'rooms/join', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -223,7 +227,7 @@ export default {
       let formData = new FormData()
       formData.append('name', this.entry.name)
       formData.append('roomid', this.entry.room.id)
-      fetch('http://47.106.171.107/rooms/exit', {
+      fetch(this.ip+'rooms/exit', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -238,7 +242,7 @@ export default {
     createRoom () {
       let formData = new FormData()
       formData.append('name', this.entry.name)
-      fetch('http://47.106.171.107/rooms/create', {
+      fetch(this.ip+'rooms/create', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
@@ -253,13 +257,32 @@ export default {
     startRoom () {
       let formData = new FormData()
       formData.append('roomid', this.entry.room.id)
-      fetch('http://47.106.171.107/rooms/start', {
+      fetch(this.ip+'rooms/start', {
         body: formData,
         method: 'POST',
       }).then(res => res.json()).then(json => {
         if (json.error) {
           this.entry.error = json.error
         } else {
+        }
+      })
+    },
+    fetchGameStatus () {
+      let formData = new FormData()
+      formData.append('roomid', this.entry.room.id)
+      fetch(this.ip+'room', {body: formData,method: 'POST',}).then(res => res.json()).then(json => {
+        if (json.error) {
+          this.entry.error = json.error
+        } else {
+          this.entry.room = json
+          let room = this.entry.room
+          // if game end, return to the room
+          if (room.start = false) {
+            this.entry.inentry = true
+          }
+          // update enemy hp
+          let selfId = room.users.findIndex(v => v.name === this.entry.name)
+          this.game.oppHp = room.users[1-selfId]
         }
       })
     },
@@ -277,17 +300,34 @@ export default {
       this.equips[1] = new EquipInfo[0]()
       this.equips[2] = new EquipInfo[0]()
     },
+    main () {
+      this.clearAll()
+      this.drawBoard()
+      this.drawHand()
+      this.drawStore()
+      this.drawHold()
+      this.drawUtil()
+      this.drawDamageRecord()
+      this.drawclasses()
+      this.drawEquips()
+      this.drawSchedule()
+      this.drawPlayers()
+      for (let i in this.queue) {
+        this.queue[i]()
+      }
+      this.schedule()
+      window.requestAnimationFrame(this.main)
+    },
     schedule () {
       let s = this.game.schedule
       let grids = this.board.grid
       let OK = false // flag for transimission done
       // preparing stage
       if (s.status === 'prepare') {
+        s.p ++
         if (s.p < s.pn) {
-          s.p ++
         } else if (s.p === s.pn) {
           // collect data and upload to server
-          s.p ++
           let data = {grids:[], hand: [], equip: []}
           for (let r in grids) {
             for (let c in grids) {
@@ -303,7 +343,7 @@ export default {
               }
             }
           }
-          for (let i in this.hand) {
+          for (let i in this.hand.cards) {
             if (this.hand[i] !== undefined) {
               data.hand.push(this.hand[i].id)
             }
@@ -313,43 +353,32 @@ export default {
               data.equip.push(this.equips[i].id)
             }
           }
-          console.log(data)
           let formData = new FormData()
           formData.append('roomid', this.entry.room.id)
           formData.append('name', this.entry.name)
           formData.append('data', JSON.stringify(data))
-          fetch('http://47.106.171.107/data/upload', {
-            body: formData,
-            method: 'POST',
-          }).then(res => res.json()).then(json => {
+          fetch(this.ip+'data/upload', {body: formData, method: 'POST'}).then(res => res.json()).then(json => {
             if (json.error) {
               this.entry.error = 'error: '+json.error
             } else {
-              this.game.schedule = {status: 'setting', p: 0, pn: 300}
             }
           })
-          // this.setOppChess()
-        }
-      // setting stage
-      } else if (s.status === 'setting') {
-        if (s.p < s.pn) {
-          s.p ++
-        } else if (s.p === s.pn) {
-          s.p ++
-          let formData = new FormData()
-          formData.append('roomid', this.entry.room.id)
-          formData.append('name', this.entry.name)
-          fetch('http://47.106.171.107/data/get', {
-            body: formData,
-            method: 'POST',
-          }).then(res => res.json()).then(json => {
-            if (json.error) {
-              this.entry.error = 'error: '+json.error
-            } else {
-              console.log(json)
-              this.game.schedule = {status: 'battle', p: 0}
-            }
-          })
+        } else if (s.p > s.pn) {
+          if (s.p % 60 === 0) {
+            let formData = new FormData()
+            formData.append('roomid', this.entry.room.id)
+            formData.append('name', this.entry.name)
+            fetch(this.ip+'data/get', {body: formData, method: 'POST'}).then(res => res.json()).then(json => {
+              if (json.error) {
+                console.log(json)
+              } else {
+                json = JSON.parse(json)
+                this.setOppChess(json)
+                this.startRound()
+                this.game.schedule = {status: 'battle', p: 0}
+              }
+            })
+          }
         }
       } else if (s.status === 'battle') {
         if (s.p === 1) {
@@ -357,37 +386,12 @@ export default {
           let formData = new FormData()
           formData.append('roomid', this.entry.room.id)
           formData.append('name', this.entry.name)
-          fetch('http://47.106.171.107/data/get', {
-            body: formData,
-            method: 'POST',
-          }).then(res => res.json()).then(json => {
-            if (json.error) {
-              this.entry.error = 'error: '+json.error
-            } else {
-              console.log(json)
-            }
-          })
+          formData.append('hp', this.game.hp)
+          fetch(this.ip+'data/hp/post', {body: formData,method: 'POST',})
         }
       } else {
         this.game.schedule = {status: 'prepare', p: 0, pn: 300}
       }
-    },
-    main () {
-      this.clearAll()
-      this.drawBoard()
-      this.drawHand()
-      this.drawStore()
-      this.drawHold()
-      this.drawUtil()
-      this.drawDamageRecord()
-      this.drawclasses()
-      this.drawEquips()
-      this.drawSchedule()
-      for (let i in this.queue) {
-        this.queue[i]()
-      }
-      this.schedule()
-      window.requestAnimationFrame(this.main)
     },
     /*
       init functions
@@ -717,8 +721,18 @@ export default {
           else if (grid[i][j].camp === 1) camp1++
         }
       }
-      if (camp0 === 0) {console.log('you lose')}
-      else if (camp1 === 0) {console.log('you win')}
+      let damage = 0
+      // lose
+      if (camp0 === 0) {
+        damage = camp1 * 2
+        if (this.game.hp - damage < 0) {
+          this.hp = 0
+        } else {
+          this.game.hp -= damage
+        }
+      }
+      else if (camp1 === 0) {
+      }
       if (this.game.schedule.status === 'battle') {
         this.game.schedule.p = 1
       }
@@ -787,10 +801,20 @@ export default {
         }
       }
     },
-    setOppChess () {
-      this.setChess(0, 2, this.createChess(0, 1))
-      // this.setChess(1, 2, this.createChess(0, 1))
-      this.setChess(0, 4, this.createChess(1, 1))
+    setOppChess (data) {
+      let grids = data.grids
+      console.log(typeof data)
+      for (let i in grids) {
+        let chess = grids[i]
+        let r = 5-chess.pos[0]
+        let c = 6-chess.pos[1]
+        this.setChess(r, c, this.createChess(chess.id, 1))
+        if (chess.equip) {
+          for (let j in chess.equip) {
+            this.board.grid[r][c].equip(new EquipInfo[chess.equip[j]]())
+          }
+        }
+      }
     },
     /*
       game inline functions
@@ -1021,7 +1045,9 @@ export default {
       for (let i in cards) {
         if (cards[i] === undefined) {
           cards[i] = this.createChess(cardId, 0)
-          this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+          if (this.allsrc.indexOf(cards[i].src) < 0) {
+            this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+          }
           break
         }
       }
@@ -1294,9 +1320,17 @@ export default {
         ctx.arc(this.w/2, info.t, info.arcR, Math.PI/2-(1-sch.p/sch.pn)*Math.PI*2, Math.PI/2)
         ctx.stroke()
         ctx.lineWidth = 1
-      } else if (sch.status === 'setting') {
       } else if (sch.status === 'battle') {
       }
+    },
+    drawPlayers () {
+      let ctx = this.ctx
+      let info = PosInfo.player
+      ctx.fillText(this.entry.name, this.w/2+info.l, info.t)
+      ctx.fillText(this.game.hp, this.w/2+info.l+info.spw, info.t)
+      let selfId = this.entry.room.users.findIndex(v => v.name === this.entry.name)
+      ctx.fillText(this.entry.room.users[1-selfId].name, this.w/2+info.l, info.t+info.sph)
+      ctx.fillText(this.game.oppHp, this.w/2+info.l+info.spw, info.t+info.sph)
     }
   }
 }

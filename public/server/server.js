@@ -137,9 +137,45 @@ app.post('/data/get', (req, res) => {
         if (rooms[i].id == id) {
             for (let j in rooms[i].users) {
                 if (rooms[i].users[j].name === name) {
-                    let data = rooms[i].users[1-j].data
-                    console.log(rooms[i].users)
-                    res.end(JSON.stringify(data))
+                    let oppo = rooms[i].users[1-j]
+                    if (oppo.data) {
+                        res.end(JSON.stringify(oppo.data))
+                    } else {
+                        res.end(JSON.stringify({error: 'opponent hasn\'t upload data'}))
+                    }
+                }
+            }
+        }
+    }
+})
+app.post('/data/hp/post', (req, res) => {
+    let id = req.body.roomid
+    let name = req.body.name
+    let hp = req.body.hp
+    for (let i in rooms) {
+        if (rooms[i].id == id) {
+            for (let j in rooms[i].users) {
+                if (rooms[i].users[j].name === name) {
+                    let user = rooms[i].users[j]
+                    user.hp = hp
+                    user.data = undefined
+                    if (hp <= 0) {
+                        rooms[i].started = false
+                    }
+                }
+            }
+        }
+    }
+})
+app.post('/data/hp/getOpp', (req, res) => {
+    let id = req.body.roomid
+    let name = req.body.name
+    for (let i in rooms) {
+        if (rooms[i].id == id) {
+            for (let j in rooms[i].users) {
+                if (rooms[i].users[j].name === name) {
+                    let user = rooms[i].users[1-j]
+                    res.end(JSON.stringify({hp:user.hp}))
                 }
             }
         }
