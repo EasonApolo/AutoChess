@@ -151,8 +151,7 @@ app.post('/data/start', (req, res) => {
                     resolve()
                 }
             }, 100)
-        }).then(() => res.end(JSON.stringify(rooms[i].users[enemyId]))
-        )
+        }).then(() => res.end(JSON.stringify(rooms[i].users[enemyId])))
     }
 })
 app.post('/data/end', (req, res) => {
@@ -162,8 +161,20 @@ app.post('/data/end', (req, res) => {
     let [i, j, _] = getUser(id, name)
     if (i) {
         rooms[i].users[j].hp = hp
-        res.end(JSON.stringify(rooms[i].users[j]))
+        let data = JSON.stringify(rooms[i].users[j])
+        let stage = rooms[i].stage
         rooms[i].users[j].data = undefined
+        if (rooms[i].users.findIndex(v => v.data !== undefined) < 0) {
+            rooms[i].stage ++
+        }
+        new Promise(resolve => {
+            let intervalID = setInterval(() => {
+                if (rooms[i].stage != stage) {
+                    clearInterval(intervalID)
+                    resolve()
+                }
+            }, 100)
+        }).then(() => res.end(data))
     }
 })
 

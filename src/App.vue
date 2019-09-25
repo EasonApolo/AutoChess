@@ -100,7 +100,8 @@ export default {
         grave: [],
         classes: {},
         schedule: {},
-        hp: 100
+        hp: 100,
+        enemy: undefined,
       },
       hold: undefined,
       board: {
@@ -132,12 +133,24 @@ export default {
   mounted () {
     this.fetchID = setInterval(this.fetchStatus, 3000)
   },
+  computed: {
+    sortedRoomUsers () {
+      let users = this.entry.room.users
+      return users.sort((a,b) => a.hp - b.hp)
+    }
+  },
   methods: {
     /*
       entry methods
       */
+    getUserIndex (name) {
+      return this.entry.room.users.findIndex(v => v.name === name)
+    },
+    getEnemyIndex () {
+      return this.getUserIndex(this.game.enemy.name)
+    },
     getMeIndex () {
-      return this.entry.room.users.findIndex(v => v.name === this.entry.name)
+      return this.getUserIndex(this.entry.name)
     },
     dealError (error) {
       console.log(error)
@@ -237,9 +250,6 @@ export default {
         if (room.start = false) {
           this.entry.inentry = true
         }
-        // update enemy hp
-        let selfId = room.users.findIndex(v => v.name === this.entry.name)
-        this.game.oppHp = room.users[1-selfId]
       })
     },
     /*
@@ -255,6 +265,7 @@ export default {
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
       this.equips[2] = new EquipInfo[0]()
+      this.queue.push(this.actAll)
     },
     main () {
       this.clearAll()
@@ -280,7 +291,6 @@ export default {
       let OK = false // flag for transimission done
       // preparing stage
       if (s.status === 'prepare') {
-        s.p ++
         if (s.p === 0) {
           this.fetchGameStatus()
         }
@@ -316,21 +326,26 @@ export default {
           let param = {roomid: this.entry.room.id, name: this.entry.name, data: JSON.stringify(data)}
           this.fetch('data/start', param).then(json => {
             this.setChessByData(JSON.parse(json.data), 1)
+            this.game.enemy = json
+            this.game.schedule = {status: 'battle', p: 0, pn: 100000}
             this.startRound()
-            this.game.schedule = {status: 'battle', p: 0}
           })
         }
         else if (s.p > s.pn) {
         }
+        s.p ++
       } else if (s.status === 'battle') {
-        if (s.p === 1) {
-          this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+        if (s.p == s.pn) {
           let param = {roomid: this.entry.room.id, name: this.entry.name, hp: this.game.hp}
           this.fetch('data/end', param).then(json => {
+            console.log(json)
             this.initBoard()
             this.setChessByData(JSON.parse(json.data), 0)
+            this.game.schedule = {status: 'prepare', p: 0, pn: 300}
           })
+        } else if (s.p > 1) {
         }
+        s.p++
       } else {
         this.game.schedule = {status: 'prepare', p: 0, pn: 300}
       }
@@ -370,7 +385,7 @@ export default {
       let y = e.clientY*2
       // click board
       let pos = this.getPosByCoord(x, y)
-      if (pos) {
+      if (this.game.schedule.status !== 'battle' && pos) {
         let [j, i] = pos
         // if hold a equipment, equit it to the chess
         if (this.hold instanceof equip) {
@@ -452,7 +467,6 @@ export default {
       */
     startRound () {
       this.queue.push(this.checkRemain)
-      this.queue.push(this.actAll)
       this.initAllChess()
     },
     actAll () {
@@ -660,6 +674,8 @@ export default {
           else if (grid[i][j].camp === 1) camp1++
         }
       }
+      if (camp0 > 0 && camp1 > 0) return
+      removeFromArr(this.queue, this.checkRemain)
       let damage = 0
       // lose
       if (camp0 === 0) {
@@ -673,7 +689,7 @@ export default {
       else if (camp1 === 0) {
       }
       if (this.game.schedule.status === 'battle') {
-        this.game.schedule.p = 1
+        this.game.schedule.p = this.game.schedule.pn
       }
     },
     // initialize all chesses at this round start
@@ -744,12 +760,13 @@ export default {
       let grids = data.grids
       for (let i in grids) {
         let chess = grids[i]
+        let r,c
         if (camp === 1) {
-          let r = 5-chess.pos[0]
-          let c = 6-chess.pos[1]
+          r = 5-chess.pos[0]
+          c = 6-chess.pos[1]
         } else {
-          let r = chess.pos[0]
-          let c = chess.pos[1]
+          r = chess.pos[0]
+          c = chess.pos[1]
         }
         this.setChess(r, c, this.createChess(chess.id, camp))
         if (chess.equip) {
@@ -1256,7 +1273,7 @@ export default {
       let ctx = this.ctx
       let sch = this.game.schedule
       let info = PosInfo.schedule
-      if (sch.status === 'prepare') {
+      if (sch.status === 'prepare' || sch.status === 'battle' && sch.p >= sch.pn) {
         ctx.lineWidth = 5
         ctx.beginPath()
         if (sch.p <= sch.pn) {
@@ -1269,18 +1286,17 @@ export default {
         }
         ctx.stroke()
         ctx.lineWidth = 1
-      } else if (sch.status === 'battle') {
       }
-      ctx.fillText(sch.stage, info.w/2, info.t)
+      ctx.fillText(this.entry.room.stage, this.w/2, info.t)
     },
     drawPlayers () {
       let ctx = this.ctx
       let info = PosInfo.player
-      ctx.fillText(this.entry.name, this.w/2+info.l, info.t)
-      ctx.fillText(this.game.hp, this.w/2+info.l+info.spw, info.t)
-      let selfId = this.getMeIndex()
-      ctx.fillText(this.entry.room.users[1-selfId].name, this.w/2+info.l, info.t+info.sph)
-      ctx.fillText(this.game.oppHp, this.w/2+info.l+info.spw, info.t+info.sph)
+      for (let i in this.entry.room.users) {
+        let user = this.entry.room.users[i]
+        ctx.fillText(user.name, this.w/2+info.l, info.t+info.sph*i)
+        ctx.fillText(user.hp, this.w/2+info.l+info.spw, info.t+info.sph*i)
+      }
     }
   }
 }
@@ -1354,10 +1370,10 @@ input {
 }
 .game {
   height: 100%;
-  opacity: 0;
-  &:hover {
-    opacity: 1;
-  }
+  // opacity: 0;
+  // &:hover {
+  //   opacity: 1;
+  // }
 }
 .show {
   position: fixed;
