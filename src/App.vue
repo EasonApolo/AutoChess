@@ -104,7 +104,7 @@ export default {
       },
       hold: undefined,
       board: {
-        grid: [[], [], [], [], [], []],
+        grid: undefined,
       },
       store: {
         cards: new Array(5).fill(undefined)
@@ -119,7 +119,7 @@ export default {
       showChess: undefined,
       showPos: undefined,
       // ip: this.ip+'',
-      ip: 'http://localhost:80/',
+      ip: 'http://localhost:81/',
     }
   },
   created () {
@@ -136,39 +136,45 @@ export default {
     /*
       entry methods
       */
-    login () {
+    getMeIndex () {
+      return this.entry.room.users.findIndex(v => v.name === this.entry.name)
+    },
+    dealError (error) {
+      console.log(error)
+    },
+    fetch (route, param) {
       let formData = new FormData()
-      formData.append('name', this.entry.name)
-      formData.append('password', this.entry.password)
-      fetch(this.ip+'users/login', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        // response can be error or room(if user already in room)
-        if (json.error) {
-          this.entry.error = 'error: '+json.error
-        } else {
-          this.entry.login = true
-          if (json.start !== undefined) {
-            this.entry.inroom = true
-            this.entry.room = json
-          } 
-        }
+      for (let k in param) {
+        formData.append(k, param[k])
+      }
+      return new Promise((resolve, reject) => {
+        fetch(this.ip+route, {
+          body: formData,
+          method: 'POST',
+        }).then(res => res.json())
+        .then(json => {
+          if (json.error) {
+            this.dealError(json)
+            reject()
+          }
+          else {resolve(json)}
+        })
+      })
+    },
+    login () {
+      let param = {name: this.entry.name, password: this.entry.password}
+      this.fetch('user/login', param).then(json => {
+        this.entry.login = true
+        if (json.start !== undefined) {
+          this.entry.inroom = true
+          this.entry.room = json
+        } 
       })
     },
     signup () {
-      let formData = new FormData()
-      formData.append('name', this.entry.name)
-      formData.append('password', this.entry.password)
-      fetch(this.ip+'users/signup', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = 'error: ' + json.error
-        } else {
-          this.entry.login = true
-        }
+      let param = {name: this.entry.name, password: this.entry.password}
+      this.fetch('user/signup', param).then(json => {
+        this.entry.login = true
       })
     },
     fetchStatus () {
@@ -181,109 +187,59 @@ export default {
       }
     },
     fetchRooms () {
-      fetch(this.ip+'rooms/list').then(res => res.json()).then(json => {
-        if (json) {
-          this.entry.rooms = json
-        }
+      fetch(this.ip+'room/list').then(res => res.json()).then(json => {
+        this.entry.rooms = json
       })
     },
     fetchRoom () {
-      let formData = new FormData()
-      formData.append('roomid', this.entry.room.id)
-      fetch(this.ip+'room', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-          this.entry.room = json
-          if (json.start) {
-            this.entry.inentry = false
-            clearInterval(this.fetchID)
-            this.fetchID = setInterval(this.fetchGameStatus, 2000)
-            this.$nextTick(this.startGame)
-          }
+      let param = {roomid: this.entry.room.id}
+      this.fetch('room', param).then(json => {
+        this.entry.room = json
+        if (json.start) {
+          this.entry.inentry = false
+          clearInterval(this.fetchID)
+          // this.fetchID = setInterval(this.fetchGameStatus, 2000)
+          this.$nextTick(this.startGame)
         }
       })
     },
     joinRoom (id) {
-      let formData = new FormData()
-      formData.append('name', this.entry.name)
-      formData.append('roomid', id)
-      fetch(this.ip+'rooms/join', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-          this.entry.inroom = true
-          this.entry.room = json
-        }
+      let param = {name: this.entry.name, roomid: id}
+      this.fetch('room/join', param).then(json => {
+        this.entry.inroom = true
+        this.entry.room = json
       })
     },
     exitRoom () {
-      let formData = new FormData()
-      formData.append('name', this.entry.name)
-      formData.append('roomid', this.entry.room.id)
-      fetch(this.ip+'rooms/exit', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-          this.entry.inroom = false
-          this.entry.rooms = json
-        }
+      let param = {name: this.entry.name, roomid: this.entry.room.id}
+      this.fetch('room/exit', param).then(json => {
+        this.entry.inroom = false
+        this.entry.rooms = json
       })
     },
     createRoom () {
-      let formData = new FormData()
-      formData.append('name', this.entry.name)
-      fetch(this.ip+'rooms/create', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-          this.entry.inroom = true
-          this.entry.room = json
-        }
+      let param = {name: this.entry.name}
+      this.fetch('room/create', param).then(json => {
+        this.entry.inroom = true
+        this.entry.room = json
       })
     },
     startRoom () {
-      let formData = new FormData()
-      formData.append('roomid', this.entry.room.id)
-      fetch(this.ip+'rooms/start', {
-        body: formData,
-        method: 'POST',
-      }).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-        }
-      })
+      let param = {roomid: this.entry.room.id}
+      this.fetch('room/start', param)
     },
     fetchGameStatus () {
-      let formData = new FormData()
-      formData.append('roomid', this.entry.room.id)
-      fetch(this.ip+'room', {body: formData,method: 'POST',}).then(res => res.json()).then(json => {
-        if (json.error) {
-          this.entry.error = json.error
-        } else {
-          this.entry.room = json
-          let room = this.entry.room
-          // if game end, return to the room
-          if (room.start = false) {
-            this.entry.inentry = true
-          }
-          // update enemy hp
-          let selfId = room.users.findIndex(v => v.name === this.entry.name)
-          this.game.oppHp = room.users[1-selfId]
+      let param = {roomid: this.entry.room.id}
+      this.fetch('room', param).then(json => {
+        this.entry.room = json
+        let room = this.entry.room
+        // if game end, return to the room
+        if (room.start = false) {
+          this.entry.inentry = true
         }
+        // update enemy hp
+        let selfId = room.users.findIndex(v => v.name === this.entry.name)
+        this.game.oppHp = room.users[1-selfId]
       })
     },
     /*
@@ -325,8 +281,12 @@ export default {
       // preparing stage
       if (s.status === 'prepare') {
         s.p ++
-        if (s.p < s.pn) {
-        } else if (s.p === s.pn) {
+        if (s.p === 0) {
+          this.fetchGameStatus()
+        }
+        else if (s.p < s.pn) {
+        }
+        else if (s.p === s.pn) {
           // collect data and upload to server
           let data = {grids:[], hand: [], equip: []}
           for (let r in grids) {
@@ -353,41 +313,23 @@ export default {
               data.equip.push(this.equips[i].id)
             }
           }
-          let formData = new FormData()
-          formData.append('roomid', this.entry.room.id)
-          formData.append('name', this.entry.name)
-          formData.append('data', JSON.stringify(data))
-          fetch(this.ip+'data/upload', {body: formData, method: 'POST'}).then(res => res.json()).then(json => {
-            if (json.error) {
-              this.entry.error = 'error: '+json.error
-            } else {
-            }
+          let param = {roomid: this.entry.room.id, name: this.entry.name, data: JSON.stringify(data)}
+          this.fetch('data/start', param).then(json => {
+            this.setChessByData(JSON.parse(json.data), 1)
+            this.startRound()
+            this.game.schedule = {status: 'battle', p: 0}
           })
-        } else if (s.p > s.pn) {
-          if (s.p % 60 === 0) {
-            let formData = new FormData()
-            formData.append('roomid', this.entry.room.id)
-            formData.append('name', this.entry.name)
-            fetch(this.ip+'data/get', {body: formData, method: 'POST'}).then(res => res.json()).then(json => {
-              if (json.error) {
-                console.log(json)
-              } else {
-                json = JSON.parse(json)
-                this.setOppChess(json)
-                this.startRound()
-                this.game.schedule = {status: 'battle', p: 0}
-              }
-            })
-          }
+        }
+        else if (s.p > s.pn) {
         }
       } else if (s.status === 'battle') {
         if (s.p === 1) {
           this.game.schedule = {status: 'prepare', p: 0, pn: 300}
-          let formData = new FormData()
-          formData.append('roomid', this.entry.room.id)
-          formData.append('name', this.entry.name)
-          formData.append('hp', this.game.hp)
-          fetch(this.ip+'data/hp/post', {body: formData,method: 'POST',})
+          let param = {roomid: this.entry.room.id, name: this.entry.name, hp: this.game.hp}
+          this.fetch('data/end', param).then(json => {
+            this.initBoard()
+            this.setChessByData(JSON.parse(json.data), 0)
+          })
         }
       } else {
         this.game.schedule = {status: 'prepare', p: 0, pn: 300}
@@ -397,11 +339,8 @@ export default {
       init functions
       */
     initBoard () {
-      for (let i in this.board.grid) {
-        for (let j = 0; j < 7; j++) {
-          this.board.grid[i].push(undefined)
-        }
-      }
+      let tmp = new Array(6).fill(undefined)
+      this.board.grid = tmp.map(v => new Array(7).fill(undefined))
     },
     /*
       user actions
@@ -801,14 +740,18 @@ export default {
         }
       }
     },
-    setOppChess (data) {
+    setChessByData (data, camp) {   // camp 0 friend, camp 1 enemy
       let grids = data.grids
-      console.log(typeof data)
       for (let i in grids) {
         let chess = grids[i]
-        let r = 5-chess.pos[0]
-        let c = 6-chess.pos[1]
-        this.setChess(r, c, this.createChess(chess.id, 1))
+        if (camp === 1) {
+          let r = 5-chess.pos[0]
+          let c = 6-chess.pos[1]
+        } else {
+          let r = chess.pos[0]
+          let c = chess.pos[1]
+        }
+        this.setChess(r, c, this.createChess(chess.id, camp))
         if (chess.equip) {
           for (let j in chess.equip) {
             this.board.grid[r][c].equip(new EquipInfo[chess.equip[j]]())
@@ -1314,21 +1257,28 @@ export default {
       let sch = this.game.schedule
       let info = PosInfo.schedule
       if (sch.status === 'prepare') {
-        ctx.strokeStyle = '#555'
         ctx.lineWidth = 5
         ctx.beginPath()
-        ctx.arc(this.w/2, info.t, info.arcR, Math.PI/2-(1-sch.p/sch.pn)*Math.PI*2, Math.PI/2)
+        if (sch.p <= sch.pn) {
+          ctx.strokeStyle = '#555'
+          ctx.arc(this.w/2, info.t, info.arcR, Math.PI/2-(1-sch.p/sch.pn)*Math.PI*2, Math.PI/2)
+        } else {
+          let opacity = (40-Math.abs(((sch.p-sch.pn)%80)-40))*0.02
+          ctx.strokeStyle = `rgba(85, 85, 85, ${opacity})`
+          ctx.arc(this.w/2, info.t, info.arcR, -Math.PI*3/2, Math.PI/2)
+        }
         ctx.stroke()
         ctx.lineWidth = 1
       } else if (sch.status === 'battle') {
       }
+      ctx.fillText(sch.stage, info.w/2, info.t)
     },
     drawPlayers () {
       let ctx = this.ctx
       let info = PosInfo.player
       ctx.fillText(this.entry.name, this.w/2+info.l, info.t)
       ctx.fillText(this.game.hp, this.w/2+info.l+info.spw, info.t)
-      let selfId = this.entry.room.users.findIndex(v => v.name === this.entry.name)
+      let selfId = this.getMeIndex()
       ctx.fillText(this.entry.room.users[1-selfId].name, this.w/2+info.l, info.t+info.sph)
       ctx.fillText(this.game.oppHp, this.w/2+info.l+info.spw, info.t+info.sph)
     }
@@ -1404,6 +1354,10 @@ input {
 }
 .game {
   height: 100%;
+  opacity: 0;
+  &:hover {
+    opacity: 1;
+  }
 }
 .show {
   position: fixed;

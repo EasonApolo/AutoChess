@@ -3,24 +3,50 @@ var app = express()
 var fs = require('fs')
 var multer = require('multer')().single()
 
-var rooms = []
-var roomid = 0
-
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
     next()
 })
 app.use(multer)
 
-app.post('/users/login', (req, res) => {
+var rooms = []
+var newRoomId = 1
+const MAX_N_PLAYER = 4
+
+getNewRoomId = () => {
+    return newRoomId++
+}
+getEnemyId = (stage, id, len) => {      // stage start from 0
+    let tmp = (id+stage)%(len-1)
+    if (tmp >= id) tmp++
+    return tmp
+}
+getRoom = (roomid) => {
+    for (let i in rooms) {
+        if (rooms[i].id == roomid) {    // roomid is parsed from request, usually string, use ==
+            return i
+        }
+    }
+    return undefined
+}
+getUser = (roomid, username) => {
+    let i = getRoom(roomid)
+    for (let j in rooms[i].users) {
+        if (rooms[i].users[j].name === username) {
+            return [i, j, rooms[i].users[j]]
+        }
+    }
+    return []
+}
+
+app.post('/user/login', (req, res) => {
     let name = req.body.name
     let password = req.body.password
     fs.readFile(__dirname + '/' + 'users.json', (err, data) => {
         data = JSON.parse(data)
         for (let i in data) {
             if (i === name) {
-                if (data[i].password === password) {
-                    // login success
+                if (data[i].password === password) {    // login success
                     for (let i in rooms) {
                         for (let j in rooms[i].users) {
                             if (rooms[i].users[j].name === name) {
@@ -38,7 +64,7 @@ app.post('/users/login', (req, res) => {
         res.end(JSON.stringify({'error': 'no user'}))
     })
 })
-app.post('/users/signup', (req, res) => {
+app.post('/user/signup', (req, res) => {
     let name = req.body.name
     let password = req.body.password
     fs.readFile(__dirname + '/' + 'users.json', (err, data) => {
@@ -57,132 +83,91 @@ app.post('/users/signup', (req, res) => {
         })
     })
 })
-app.post('/rooms/join', (req, res) => {
+
+app.post('/room/create', (req, res) => {
     let name = req.body.name
-    let id = req.body.roomid
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            if (rooms[i].users.length < 2) {
-                rooms[i].users.push({'name': name})
-                res.end(JSON.stringify(rooms[i]))
-            }
-            res.end(JSON.stringify({'error': 'room not available'}))
-        }
-    }
-    res.end(JSON.stringify({'error': 'room not exist'}))
-})
-app.post('/rooms/create', (req, res) => {
-    let name = req.body.name
-    let room = {'id':roomid, 'start': false, 'stage':0, users:[{'name': name}]}
-    roomid += 1
+    let room = {'id':getNewRoomId(), 'start': false, 'stage':0, users:[{'name': name}]}
     rooms.push(room)
     res.end(JSON.stringify(room))
 })
-app.post('/rooms/exit', (req, res) => {
+app.post('/room/join', (req, res) => {
     let name = req.body.name
     let id = req.body.roomid
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            for (let j in rooms[i].users) {
-                if (rooms[i].users[j].name === name) {
-                    rooms[i].users.splice(j, 1)
-                }
-                if (rooms[i].users.length <= 0) {
-                    rooms.splice(i, 1)
-                }
-                res.end(JSON.stringify(rooms))
-            }
-        }
+    let i = getRoom(id)
+    if (!i) res.end(JSON.stringify({'error': 'room not exist'}))
+    if (rooms[i].users.length < MAX_N_PLAYER) {
+        rooms[i].users.push({'name': name})
+        res.end(JSON.stringify(rooms[i]))
     }
+    res.end(JSON.stringify({'error': 'room not available'}))
 })
-app.post('/rooms/start', (req, res) => {
+app.post('/room/exit', (req, res) => {
+    let name = req.body.name
     let id = req.body.roomid
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            rooms[i].start = true
-            res.end(JSON.stringify(rooms))
+    let [i, j, _] = getUser(id, name)
+    if (i) {
+        rooms[i].users.splice(j, 1)
+        if (rooms[i].users.length <= 0) {
+            rooms.splice(i, 1)
         }
+        res.end(JSON.stringify(rooms))
     }
 })
-app.post('/room', (req, res) => {
+app.post('/room/start', (req, res) => {
     let id = req.body.roomid
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            res.end(JSON.stringify(rooms[i]))
-        }
+    let i = getRoom(id)
+    if (i) {
+        rooms[i].start = true
+        rooms[i].users.map(v => {
+            v.hp = 100
+        })
+        res.end(JSON.stringify(rooms))
     }
 })
-app.get('/rooms/list', (req, res) => {
+app.get('/room/list', (req, res) => {
     res.end(JSON.stringify(rooms))
 })
-app.post('/data/upload', (req, res) => {
+
+app.post('/room', (req, res) => {
     let id = req.body.roomid
-    let name = req.body.name
-    let data = req.body.data
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            for (let j in rooms[i].users) {
-                if (rooms[i].users[j].name === name) {
-                    rooms[i].users[j].data = data
-                    res.end(JSON.stringify(rooms[i]))
-                }
-            }
-        }
-    }
-})
-app.post('/data/get', (req, res) => {
-    let id = req.body.roomid
-    let name = req.body.name
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            for (let j in rooms[i].users) {
-                if (rooms[i].users[j].name === name) {
-                    let oppo = rooms[i].users[1-j]
-                    if (oppo.data) {
-                        res.end(JSON.stringify(oppo.data))
-                    } else {
-                        res.end(JSON.stringify({error: 'opponent hasn\'t upload data'}))
-                    }
-                }
-            }
-        }
-    }
-})
-app.post('/data/hp/post', (req, res) => {
-    let id = req.body.roomid
-    let name = req.body.name
-    let hp = req.body.hp
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            for (let j in rooms[i].users) {
-                if (rooms[i].users[j].name === name) {
-                    let user = rooms[i].users[j]
-                    user.hp = hp
-                    user.data = undefined
-                    if (hp <= 0) {
-                        rooms[i].started = false
-                    }
-                }
-            }
-        }
-    }
-})
-app.post('/data/hp/getOpp', (req, res) => {
-    let id = req.body.roomid
-    let name = req.body.name
-    for (let i in rooms) {
-        if (rooms[i].id == id) {
-            for (let j in rooms[i].users) {
-                if (rooms[i].users[j].name === name) {
-                    let user = rooms[i].users[1-j]
-                    res.end(JSON.stringify({hp:user.hp}))
-                }
-            }
-        }
+    let i = getRoom(id)
+    if (i) {
+        res.end(JSON.stringify(rooms[i]))
     }
 })
 
-var server = app.listen(80, () => {
+app.post('/data/start', (req, res) => {
+    let id = req.body.roomid
+    let name = req.body.name
+    let data = req.body.data
+    let [i, j, _] = getUser(id, name)
+    if (i) {
+        rooms[i].users[j].data = data
+        let enemyId = getEnemyId(rooms[i].stage, j, rooms[i].users.length)
+        new Promise(resolve => {
+            let intervalID = setInterval(() => {
+                if (rooms[i].users[enemyId].data) {
+                    clearInterval(intervalID)
+                    resolve()
+                }
+            }, 100)
+        }).then(() => res.end(JSON.stringify(rooms[i].users[enemyId]))
+        )
+    }
+})
+app.post('/data/end', (req, res) => {
+    let id = req.body.roomid
+    let name = req.body.name
+    let hp = req.body.hp
+    let [i, j, _] = getUser(id, name)
+    if (i) {
+        rooms[i].users[j].hp = hp
+        res.end(JSON.stringify(rooms[i].users[j]))
+        rooms[i].users[j].data = undefined
+    }
+})
+
+var server = app.listen(81, () => {
     var host = server.address().address
     var port = server.address().port
     console.log('server running at %s:%s', host, port)

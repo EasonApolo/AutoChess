@@ -46,7 +46,7 @@ export default {
         'h': 70
     },
     'schedule': {
-        't': 50,
+        't': 70,
         'arcR': 50,
     },
     'player': {
