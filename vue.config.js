@@ -5,5 +5,5 @@ module.exports = {
         hot: true,
         disableHostCheck: true
     },
-    publicPath: process.env.NODE_ENV === 'production' ? '/dist/' : '/'
+    publicPath: process.env.NODE_ENV === 'production' ? '/AutoChess/dist/' : '/'
 }
