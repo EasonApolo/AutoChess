@@ -122,8 +122,8 @@ export default {
       util: [],
       showChess: undefined,
       showPos: undefined,
-      // ip: this.ip+'',
-      ip: 'http://localhost:81/',
+      ip: 'http://47.106.171.107:80/',
+      // ip: 'http://localhost:81/',
     }
   },
   created () {
@@ -427,10 +427,10 @@ export default {
         let top = y-(this.h-info.h)
         if (left%(info.w1+info.sp)<info.sp || top%(info.w1+info.sp)<info.sp) return
         else if (left < info.w1+info.sp) {
-          if (top%(info.bh+info.sp)<info.bh) return
+          if (top%(info.bh+info.sp)<info.sp) return
           else if (Math.floor(top/(info.bh+info.sp)) == 1) {
             this.buyDeal()
-          } else if (Math.floor(top/(info.bh+info.sp)) == 1) {
+          } else if (Math.floor(top/(info.bh+info.sp)) == 2) {
             this.buyUpgrade()
           }
         }
@@ -470,6 +470,7 @@ export default {
       return true
     },
     buyDeal () {
+      console.log('bb')
       if (this.game.gold >= this.game.costRedeal) {
         this.game.gold -= this.game.costRedeal
         this.deal()
@@ -1411,10 +1412,10 @@ input {
 }
 .game {
   height: 100%;
-  opacity: 0;
-  &:hover {
-    opacity: 1;
-  }
+  // opacity: 0;
+  // &:hover {
+  //   opacity: 1;
+  // }
 }
 .show {
   position: fixed;
