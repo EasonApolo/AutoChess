@@ -125,7 +125,7 @@ export class buff_graves_buckshot extends buff {
       let [x0, y0] = this.vm.getCoord(...this.src.pos)
       let midAngle = Math.atan((y1-y0)/(x1-x0))
       if (x1 < x0) {  // arctan only get -PI/2 ~ PI/2 (always right side)
-        midAngle = -midAngle
+        midAngle = Math.PI+midAngle
       }
       let angles = []
       for (let i=0; i < 6; i++) {
@@ -421,5 +421,56 @@ export default [
         new buff_graves_buckshot(this.vm, this)
       ]
     }
-  }
+  },
+
+  // class Aatrox extends chess {
+  //   constructor (vm) {
+  //     super(vm)
+  //     this.id = 4,
+  //     this._name = '暗裔剑魔',
+  //     this.lvl = 0
+  //     this.size = 0.8,
+  //     this.cat = [3, 6],
+  //     this.src = 'Aatrox.png',
+  //     this.hp = 700,
+  //     this.mp = 75,
+  //     this._ad = 65,
+  //     this._as = 0.65,
+  //     this.range = 1,
+  //     this.sp = 60,
+  //     this.armor = 25,
+  //     this.mr = 20,
+  //     this.util = {
+  //       sp: 1000,
+  //     },
+  //     this.buff = [
+  //     ]
+  //     this.spell_pre = 30
+  //     this.spell_stage = 0
+  //     this.spell = function the_darkin_blade () {
+  //       if (this.status.target) {
+          
+  //         let [x0,y0] = this.vm.getCoord(...this.pos)
+  //         let [x1,y1] = this.vm.getCoord(...this.status.target.pos)
+  //         let tgtLen = this.vm.getEuclid(x0, y0, x1, y1)
+  //         let info = PosInfo.board
+  //         if (this.spell_stage < 2) {
+  //           let len = info.w1*info.ratio*4
+  //           let xt = len/tgtLen*(x1-x0)+x0
+  //           let yt = len/tgtLen*(y1-y0)+y0
+  //           new util_yasuo_tempest(this.vm, this, [x0,y0], [xt,yt])
+  //           this.spell_stage ++
+  //         } else {
+  //           let len = info.w1*info.ratio*10
+  //           let x_len = (x1-x0)/tgtLen*len
+  //           let y_len = (y1-y0)/tgtLen*len
+  //           new util_yasuo_tornado(this.vm, this, x_len, y_len)
+  //           this.spell_stage = 0
+  //         }
+  //         this.status.spell = undefined
+  //         this.status.attack = 0
+  //       }
+  //     }
+  //   }
+  // }
 ]

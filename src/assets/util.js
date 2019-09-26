@@ -261,3 +261,59 @@ export class util_graves_buckshot extends util_area{
     ctx.lineWidth = '1'
   }
 }
+
+// export class util_aatrox_blade extends util_area{
+//   constructor (vm, src, x_len, y_len) {
+//     super(vm, src)
+//     this.w = 0    // radius
+//     this.sp = 90  // finish in 60 ticks
+//     this.now = 0  // current tick
+//     this.start = this.vm.getCoord(...src.pos)              // start pos
+//     this.pos = this.start
+//     this.post = 20
+//     this.base = [150, 350, 550]
+//     this.damage = this.base[this.src.lvl]
+//   }
+//   act () {
+//     if (this.status.prepare) {
+//       if (this.now === this.sp) {
+//         this.status = {done:true}
+//         this.post = this.sp/3
+//         return
+//       }
+//       let rate = this.now / this.sp
+//       this.w = this.now
+//       this.pos = [rate*this.x_len + this.start[0], rate*this.y_len + this.start[1]]
+//       let grids = this.vm.board.grid
+//       for (let r in grids) {
+//         for (let c in grids[r]) {
+//           if (grids[r][c] !== undefined && grids[r][c].camp !== this.src.camp && this.been.indexOf(grids[r][c]) < 0) {
+//             // console.log(grids[r][c], this.been, this.been.indexOf(grids[r][c]))
+//             if (this.vm.getEuclid(...this.pos, ...this.vm.getCoord(r,c)) < (66 + this.w)) {
+//               this.vm.damage(this, grids[r][c])
+//               if (grids[r][c]) {
+//                 this.vm.stun(this, grids[r][c])
+//               }
+//               this.been.push(grids[r][c])
+//             }
+//           }
+//         }
+//       }
+//       this.now++
+//     } else if (this.status.done) {
+//       this.w = this.post*3
+//       if (this.post <= 0) {
+//         removeFromArr(this.vm.util, this)
+//       }
+//       this.post --
+//     }
+//   }
+//   draw (ctx, xbase, ybase) {
+//     ctx.strokeStyle = 'rgb(200,200,200)'
+//     ctx.lineWidth = '5'
+//     ctx.beginPath()
+//     ctx.arc(this.pos[0]+xbase, this.pos[1]+ybase, this.w, 0, 2*Math.PI)
+//     ctx.stroke()
+//     ctx.lineWidth = '1'
+//   }
+// }

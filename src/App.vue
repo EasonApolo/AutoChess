@@ -68,7 +68,7 @@ import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
 import EquipInfo, { equip } from './assets/equip'
-import ScriptInfo from './assets/script'
+import { stage, upgradeExp } from './assets/script'
 
 export default {
   name: 'app',
@@ -93,6 +93,7 @@ export default {
       game: {
         turn: 0,
         gold: 100,
+        exp: 0,
         lvl: 1,
         costUpgrade: 4,
         costRedeal: 2,
@@ -102,6 +103,8 @@ export default {
         schedule: {},
         hp: 100,
         enemy: undefined,
+        clickBoard: true,
+        combo: 0,
       },
       hold: undefined,
       board: {
@@ -293,11 +296,14 @@ export default {
       if (s.status === 'prepare') {
         if (s.p === 0) {
           this.fetchGameStatus()
+          this.updateGold()
+          this.updateExp()
         }
         else if (s.p < s.pn) {
         }
         else if (s.p === s.pn) {
           // collect data and upload to server
+          this.game.clickBoard = false
           let data = {grids:[], hand: [], equip: []}
           for (let r in grids) {
             for (let c in grids) {
@@ -342,6 +348,7 @@ export default {
             this.initBoard()
             this.setChessByData(JSON.parse(json.data), 0)
             this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+            this.game.clickBoard = true
           })
         } else if (s.p > 1) {
         }
@@ -385,7 +392,7 @@ export default {
       let y = e.clientY*2
       // click board
       let pos = this.getPosByCoord(x, y)
-      if (this.game.schedule.status !== 'battle' && pos) {
+      if (this.game.clickBoard && pos) {
         let [j, i] = pos
         // if hold a equipment, equit it to the chess
         if (this.hold instanceof equip) {
@@ -452,8 +459,29 @@ export default {
         this.store.cards[i] = CardInfo[cardId]
       }
     },
-    buyDeal () {console.log('deal')},
-    buyUpgrade () {console.log('upgrade')},
+    addExp (exp) {
+      if (this.game.lvl >= 9) return false
+      let require = upgradeExp[this.game.lvl-1]
+      this.game.exp = this.game.exp + this.game.costUpgrade
+      if (this.game.exp >= require) {
+        this.game.exp = this.game.lvl == 8 ? 0 : this.game.exp - require
+        this.game.lvl ++
+      }
+      return true
+    },
+    buyDeal () {
+      if (this.game.gold >= this.game.costRedeal) {
+        this.game.gold -= this.game.costRedeal
+        this.deal()
+      }
+    },
+    buyUpgrade () {
+      if (this.game.gold >= this.game.costUpgrade) {
+        if (this.addExp(this.game.costUpgrade)) {
+          this.game.gold -= this.game.costUpgrade
+        }
+      }
+    },
     buyCard(storeId) {
       let wannaBuy = this.store.cards[storeId]
       if (this.game.gold >= wannaBuy.cost) {
@@ -461,6 +489,17 @@ export default {
         this.game.gold -= wannaBuy.cost
         this.addChess(wannaBuy.id)
       }
+    },
+    updateGold () {
+      let base = 5
+      if (this.entry.room.stage < 2) base = 2
+      else if (this.entry.room.stage < 4) base = parseInt(this.entry.room.stage)
+      let interest = Math.min(Math.floor(this.game.gold / 10), 5)
+      let combo = Math.min(Math.floor(this.game.combo / 2), 3)
+      this.game.gold += (base + interest + combo)
+    },
+    updateExp () {
+      this.addExp(2)
     },
     /*
       game procedure
@@ -685,8 +724,10 @@ export default {
         } else {
           this.game.hp -= damage
         }
+        this.game.combo = this.game.combo >= 0 ? -1 : this.game.combo - 1
       }
       else if (camp1 === 0) {
+        this.game.combo = this.game.combo <= 0 ? 1 : this.game.combo + 1
       }
       if (this.game.schedule.status === 'battle') {
         this.game.schedule.p = this.game.schedule.pn
@@ -1370,10 +1411,10 @@ input {
 }
 .game {
   height: 100%;
-  // opacity: 0;
-  // &:hover {
-  //   opacity: 1;
-  // }
+  opacity: 0;
+  &:hover {
+    opacity: 1;
+  }
 }
 .show {
   position: fixed;
