@@ -69,6 +69,7 @@ export class buff_tristana_explosiveSpark extends buff {
     if (type === 'damage') {
       let util = args[1]
       if (util.tgt === this.tgt && util.src === this.src) {
+        console.log(this.stage, this.src.pos)
         this.stage ++
         if (this.stage >= 3) {
           this.explode()

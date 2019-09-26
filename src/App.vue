@@ -68,7 +68,7 @@ import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
 import EquipInfo, { equip } from './assets/equip'
-import { stage, upgradeExp } from './assets/script'
+import { schedule, upgradeExp } from './assets/script'
 
 export default {
   name: 'app',
@@ -92,7 +92,7 @@ export default {
       mouse: {x:undefined, y:undefined},  // this coordinate is doubled
       game: {
         turn: 0,
-        gold: 100,
+        gold: 0,
         exp: 0,
         lvl: 1,
         costUpgrade: 4,
@@ -249,6 +249,9 @@ export default {
       this.fetch('room', param).then(json => {
         this.entry.room = json
         let room = this.entry.room
+        this.deal()
+        this.updateGold()
+        this.updateExp()
         // if game end, return to the room
         if (room.start = false) {
           this.entry.inentry = true
@@ -263,7 +266,6 @@ export default {
       this.h = document.documentElement.clientHeight*2
       this.canvas = document.getElementById('canvas')
       this.ctx = this.canvas.getContext('2d')
-      this.deal()
       this.main()
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
@@ -296,8 +298,6 @@ export default {
       if (s.status === 'prepare') {
         if (s.p === 0) {
           this.fetchGameStatus()
-          this.updateGold()
-          this.updateExp()
         }
         else if (s.p < s.pn) {
         }
@@ -333,6 +333,7 @@ export default {
           this.fetch('data/start', param).then(json => {
             this.setChessByData(JSON.parse(json.data), 1)
             this.game.enemy = json
+            this.game.damageRecord = []
             this.game.schedule = {status: 'battle', p: 0, pn: 100000}
             this.startRound()
           })
@@ -344,17 +345,16 @@ export default {
         if (s.p == s.pn) {
           let param = {roomid: this.entry.room.id, name: this.entry.name, hp: this.game.hp}
           this.fetch('data/end', param).then(json => {
-            console.log(json)
             this.initBoard()
             this.setChessByData(JSON.parse(json.data), 0)
-            this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+            this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
             this.game.clickBoard = true
           })
         } else if (s.p > 1) {
         }
         s.p++
       } else {
-        this.game.schedule = {status: 'prepare', p: 0, pn: 300}
+        this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
       }
     },
     /*
@@ -470,7 +470,6 @@ export default {
       return true
     },
     buyDeal () {
-      console.log('bb')
       if (this.game.gold >= this.game.costRedeal) {
         this.game.gold -= this.game.costRedeal
         this.deal()
@@ -500,7 +499,9 @@ export default {
       this.game.gold += (base + interest + combo)
     },
     updateExp () {
-      this.addExp(2)
+      if (this.entry.room.stage > 0) {
+        this.addExp(2)
+      }
     },
     /*
       game procedure
@@ -746,7 +747,6 @@ export default {
             g._hp = g.hp
             if (g.mp) {
               g._mp = 0
-              console.log(g.buff)
               g.buff.push(new buff_regainMana(this, g))
             }
           }
@@ -1030,16 +1030,28 @@ export default {
       }
       this.board.grid[i][j] = chess
     },
-    setChess (j, i, chess=undefined) {
+    setChess (r, c, chess=undefined) {
       let grid = this.board.grid
       // camp=0 friend, camp=1 opponent
       if (chess === undefined) {  // swap hold and grid[i][j]
-        if (j <= 2) return        // cannot set at j<=2
+        if (r <= 2) return        // cannot set at j<=2
+        if (this.hold && !grid[r][c]) { // the only way chesses on board may increase
+          let num = 0
+          for (let i in grid) {
+            for (let j in grid[i]) {
+              if (grid[i][j] && grid[i][j].camp==0) {
+                num++
+              }
+            }
+          }
+          console.log(num, this.game.lvl)
+          if (num >= this.game.lvl) return
+        }
         let tmp = this.hold
-        this.hold = grid[j][i]
-        this.setGrid(j, i, tmp)
+        this.hold = grid[r][c]
+        this.setGrid(r, c, tmp)
       } else {  // system auto set
-        this.setGrid(j, i, chess)
+        this.setGrid(r, c, chess)
       }
     },
     addChess (cardId) {
@@ -1336,8 +1348,8 @@ export default {
       let info = PosInfo.player
       for (let i in this.entry.room.users) {
         let user = this.entry.room.users[i]
-        ctx.fillText(user.name, this.w/2+info.l, info.t+info.sph*i)
-        ctx.fillText(user.hp, this.w/2+info.l+info.spw, info.t+info.sph*i)
+        ctx.fillText(user.hp, this.w/2+info.l, info.t+info.sph*i)
+        ctx.fillText(user.name, this.w/2+info.l+info.spw, info.t+info.sph*i)
       }
     }
   }
