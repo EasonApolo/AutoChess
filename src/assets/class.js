@@ -8,6 +8,8 @@ export default [
     {name: "浪人", stage: [1], exact: 0},
     {name: "海盗", stage: [3]},
     {name: "恶魔", stage: [2,4,6]},
+    {name: "虚空", stage: [2,4]},
+    {name: "斗士", stage: [2,4,6]},
 ]
 
 export function set_buff_class_gun (vm, camp, stage) {

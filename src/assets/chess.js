@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -424,54 +424,63 @@ export default [
     }
   },
 
-  // class Aatrox extends chess {
-  //   constructor (vm) {
-  //     super(vm)
-  //     this.id = 4,
-  //     this._name = '暗裔剑魔',
-  //     this.lvl = 0
-  //     this.size = 0.8,
-  //     this.cat = [3, 6],
-  //     this.src = 'Aatrox.png',
-  //     this.hp = 700,
-  //     this.mp = 75,
-  //     this._ad = 65,
-  //     this._as = 0.65,
-  //     this.range = 1,
-  //     this.sp = 60,
-  //     this.armor = 25,
-  //     this.mr = 20,
-  //     this.util = {
-  //       sp: 1000,
-  //     },
-  //     this.buff = [
-  //     ]
-  //     this.spell_pre = 30
-  //     this.spell_stage = 0
-  //     this.spell = function the_darkin_blade () {
-  //       if (this.status.target) {
-          
-  //         let [x0,y0] = this.vm.getCoord(...this.pos)
-  //         let [x1,y1] = this.vm.getCoord(...this.status.target.pos)
-  //         let tgtLen = this.vm.getEuclid(x0, y0, x1, y1)
-  //         let info = PosInfo.board
-  //         if (this.spell_stage < 2) {
-  //           let len = info.w1*info.ratio*4
-  //           let xt = len/tgtLen*(x1-x0)+x0
-  //           let yt = len/tgtLen*(y1-y0)+y0
-  //           new util_yasuo_tempest(this.vm, this, [x0,y0], [xt,yt])
-  //           this.spell_stage ++
-  //         } else {
-  //           let len = info.w1*info.ratio*10
-  //           let x_len = (x1-x0)/tgtLen*len
-  //           let y_len = (y1-y0)/tgtLen*len
-  //           new util_yasuo_tornado(this.vm, this, x_len, y_len)
-  //           this.spell_stage = 0
-  //         }
-  //         this.status.spell = undefined
-  //         this.status.attack = 0
-  //       }
-  //     }
-  //   }
-  // }
+  class Aatrox extends chess {
+    constructor (vm) {
+      super(vm)
+      this.id = 4,
+      this._name = '暗裔剑魔',
+      this.lvl = 0
+      this.size = 0.8,
+      this.cat = [3, 6],
+      this.src = 'Aatrox.png',
+      this.hp = 700,
+      this.mp = 75,
+      this._ad = 65,
+      this._as = 0.65,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this.buff = [
+      ]
+      this.spell_pre = 60
+      this.spell = function the_darkin_blade () {
+        if (this.status.target) {
+          new util_aatrox_blade(this.vm, this.status.target.pos)
+          this.status.spell = undefined
+          this.status.attack = 0
+        }
+      }
+    }
+  },
+
+  class Chogath extends chess {
+    constructor (vm) {
+      super(vm)
+      this.id = 5,
+      this._name = '虚空恐惧',
+      this.lvl = 0
+      this.size = 0.8,
+      this.cat = [7, 8],
+      this.src = 'Chogath.png',
+      this.hp = 1000,
+      this.mp = 150,
+      this._ad = 70,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this.buff = [
+      ]
+      this.spell_pre = 30
+      this.spell = function the_darkin_blade () {
+        if (this.status.target) {
+          new util_chogath_rupture(this.vm, this.status.target.pos)
+          this.status.spell = undefined
+          this.status.attack = 0
+        }
+      }
+    }
+  }
 ]

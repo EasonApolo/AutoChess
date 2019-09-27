@@ -207,7 +207,7 @@ export class util_yasuo_tornado extends util_area{
 export class util_graves_buckshot extends util_area{
   constructor (vm, src, xys) {
     super(vm, src)
-    this.w = 10   // radius
+    this.w = 20   // radius
     this.sp = 10  // finish in 60 ticks
     this.now = 0  // current tick
     this.start = this.vm.getCoord(...src.pos)              // start pos
@@ -262,58 +262,103 @@ export class util_graves_buckshot extends util_area{
   }
 }
 
-// export class util_aatrox_blade extends util_area{
-//   constructor (vm, src, x_len, y_len) {
-//     super(vm, src)
-//     this.w = 0    // radius
-//     this.sp = 90  // finish in 60 ticks
-//     this.now = 0  // current tick
-//     this.start = this.vm.getCoord(...src.pos)              // start pos
-//     this.pos = this.start
-//     this.post = 20
-//     this.base = [150, 350, 550]
-//     this.damage = this.base[this.src.lvl]
-//   }
-//   act () {
-//     if (this.status.prepare) {
-//       if (this.now === this.sp) {
-//         this.status = {done:true}
-//         this.post = this.sp/3
-//         return
-//       }
-//       let rate = this.now / this.sp
-//       this.w = this.now
-//       this.pos = [rate*this.x_len + this.start[0], rate*this.y_len + this.start[1]]
-//       let grids = this.vm.board.grid
-//       for (let r in grids) {
-//         for (let c in grids[r]) {
-//           if (grids[r][c] !== undefined && grids[r][c].camp !== this.src.camp && this.been.indexOf(grids[r][c]) < 0) {
-//             // console.log(grids[r][c], this.been, this.been.indexOf(grids[r][c]))
-//             if (this.vm.getEuclid(...this.pos, ...this.vm.getCoord(r,c)) < (66 + this.w)) {
-//               this.vm.damage(this, grids[r][c])
-//               if (grids[r][c]) {
-//                 this.vm.stun(this, grids[r][c])
-//               }
-//               this.been.push(grids[r][c])
-//             }
-//           }
-//         }
-//       }
-//       this.now++
-//     } else if (this.status.done) {
-//       this.w = this.post*3
-//       if (this.post <= 0) {
-//         removeFromArr(this.vm.util, this)
-//       }
-//       this.post --
-//     }
-//   }
-//   draw (ctx, xbase, ybase) {
-//     ctx.strokeStyle = 'rgb(200,200,200)'
-//     ctx.lineWidth = '5'
-//     ctx.beginPath()
-//     ctx.arc(this.pos[0]+xbase, this.pos[1]+ybase, this.w, 0, 2*Math.PI)
-//     ctx.stroke()
-//     ctx.lineWidth = '1'
-//   }
-// }
+export class util_aatrox_blade extends util_area{
+  constructor (vm, pos) {
+    super(vm, src)
+    let info = PosInfo.board
+    this.w = info.w1*2    // radius
+    this.now = 0  // current tick
+    this.pos = pos
+    this.coord = this.vm.getCoord(pos)
+    this.post = 45
+    this.base = [300, 600, 900]
+    this.damage = this.base[this.src.lvl]
+  }
+  act () {
+    if (this.status.prepare) {
+      this.status = {done: true}
+      let sixPos = this.vm.getSixPos(this.pos)
+      sixPos.push(this.pos)
+      let grids = this.vm.board.grid
+      for (let i in sixPos) {
+        let pos = sixPos[i]
+        let grid = grids[pos[0]][pos[1]]
+        if (grid && grid.camp==1) {
+          this.vm.damage(this, grid)
+        }
+      }
+    } else if (this.status.done) {
+      if (this.now >= this.post) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.now ++
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    let opacity = 1 - this.now / this.post
+    ctx.fillStyle = `rgba(59,09,25,${opacity})`
+    ctx.beginPath()
+    ctx.arc(this.coord[0]+xbase, this.coord[1]+ybase, this.w, 0, 2*Math.PI)
+    ctx.fill()
+  }
+}
+
+
+export class util_chogath_rupture extends util_area{
+  constructor (vm, pos) {
+    super(vm, src)
+    this.w = PosInfo.board.w1*6
+    this.radius = 3
+    this.pos = pos
+    this.coord = this.vm.getCoord(pos)
+    this.now = 0  // current tick
+    this.pre = 90
+    this.post = 60
+    this.base = [175, 350, 525]
+    this.damage = this.base[this.src.lvl]
+    this.base_stun = [1.5, 1.75, 2]
+    this.stun = this.base_stun[this.src.lvl]
+    this.stun_type = 0
+  }
+  act () {
+    if (this.status.prepare) {
+      this.now++
+      if (this.now === this.pre) {
+        this.status = {done: true}
+        let grids = this.vm.board.grid
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            if (grids[r][c] && grids[r][c].camp === 1 
+              && this.vm.getDistance(...this.pos, r, c) <= this.radius) {
+                this.vm.damage(this, grids[r][c])
+                this.vm.stun(this, grids[r][c])
+            }
+          }
+        }
+      }
+    } else if (this.status.done) {
+      if (this.now === this.post) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.now ++
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    let opacity = 0.5
+    if (this.status.prepare) {
+      ctx.fillStyle = `rgba(55,28,131,${opacity})`
+    } else {
+      opacity = 1 - this.now / this.post
+      ctx.fillStyle = `rgba(55,28,131,${opacity})`
+    }
+    ctx.beginPath()
+    ctx.arc(this.coord[0]+xbase, this.coord[1]+ybase, this.w, 0, 2*Math.PI)
+    ctx.fill()
+    ctx.lineWidth = '7'
+    ctx.strokeStyle = `rgba(55,28,131,${opacity})`
+    ctx.beginPath()
+    ctx.arc(this.coord[0]+xbase, this.coord[1]+ybase, this.w, 0, 2*Math.PI)
+    ctx.stroke()
+    ctx.lineWidth = '1'
+  }
+}

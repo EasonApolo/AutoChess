@@ -22,6 +22,18 @@ export default [
         "name": "法外狂徒",
         "cost": 1,
         "cat": [0, 5]
+    },
+    {
+        "id": 4,
+        "name": "暗裔剑魔",
+        "cost": 3,
+        "cat": [3, 6]
+    },
+    {
+        "id": 5,
+        "name": "虚空恐惧",
+        "cost": 4,
+        "cat": [7, 8]
     }
 ]
 

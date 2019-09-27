@@ -146,7 +146,11 @@ app.post('/data/start', (req, res) => {
         let enemyId = getEnemyId(rooms[i].stage, j, rooms[i].users.length)
         new Promise(resolve => {
             let intervalID = setInterval(() => {
-                if (rooms[i].users[enemyId].data) {
+                let flag = true
+                for (let k in rooms[i].users) {
+                    if (!rooms[i].users[k].data) flag = false
+                }
+                if (flag) {
                     clearInterval(intervalID)
                     resolve()
                 }
