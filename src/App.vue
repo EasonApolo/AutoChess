@@ -306,8 +306,8 @@ export default {
           this.game.clickBoard = false
           let data = {grids:[], hand: [], equip: []}
           for (let r in grids) {
-            for (let c in grids) {
-              if (grids[r][c] !== undefined) {
+            for (let c in grids[r]) {
+              if (grids[r][c]) {
                 let d = {pos:[r,c], id:grids[r][c].id, lvl: grids[r][c].lvl}
                 if (grids[r][c].equips) {
                   d.equip = []
@@ -682,6 +682,8 @@ export default {
       if (!tgt) {
         tgt = util.target
       }
+      // if still no tgt (tgt already dead or something)
+      if (!tgt) return
       // stunning shouldn't stop jump
       tgt.status.attack = undefined
       tgt.status.spell = undefined

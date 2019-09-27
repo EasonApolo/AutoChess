@@ -443,10 +443,13 @@ export default [
       this.mr = 20,
       this.buff = [
       ]
+      this.util = {
+        sp: 1000,
+      },
       this.spell_pre = 60
       this.spell = function the_darkin_blade () {
         if (this.status.target) {
-          new util_aatrox_blade(this.vm, this.status.target.pos)
+          new util_aatrox_blade(this.vm, this, this.status.target.pos)
           this.status.spell = undefined
           this.status.attack = 0
         }
@@ -473,10 +476,13 @@ export default [
       this.mr = 20,
       this.buff = [
       ]
+      this.util = {
+        sp: 1000,
+      },
       this.spell_pre = 30
       this.spell = function the_darkin_blade () {
         if (this.status.target) {
-          new util_chogath_rupture(this.vm, this.status.target.pos)
+          new util_chogath_rupture(this.vm, this, this.status.target.pos)
           this.status.spell = undefined
           this.status.attack = 0
         }

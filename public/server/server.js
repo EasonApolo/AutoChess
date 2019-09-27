@@ -86,7 +86,7 @@ app.post('/user/signup', (req, res) => {
 
 app.post('/room/create', (req, res) => {
     let name = req.body.name
-    let room = {'id':getNewRoomId(), 'start': false, 'stage':0, users:[{'name': name}]}
+    let room = {id:getNewRoomId(), start: false, stage:0, users:[{'name': name}]}
     rooms.push(room)
     res.end(JSON.stringify(room))
 })
@@ -148,7 +148,9 @@ app.post('/data/start', (req, res) => {
             let intervalID = setInterval(() => {
                 let flag = true
                 for (let k in rooms[i].users) {
-                    if (!rooms[i].users[k].data) flag = false
+                    if (!rooms[i].users[k].data) {
+                        flag=false;break;
+                    }
                 }
                 if (flag) {
                     clearInterval(intervalID)
@@ -165,20 +167,23 @@ app.post('/data/end', (req, res) => {
     let [i, j, _] = getUser(id, name)
     if (i) {
         rooms[i].users[j].hp = hp
-        let data = JSON.stringify(rooms[i].users[j])
+        rooms[i].users[j].end=true
         let stage = rooms[i].stage
-        rooms[i].users[j].data = undefined
-        if (rooms[i].users.findIndex(v => v.data !== undefined) < 0) {
-            rooms[i].stage ++
-        }
+        let userdata = JSON.stringify(rooms[i].users[j])
         new Promise(resolve => {
             let intervalID = setInterval(() => {
-                if (rooms[i].stage != stage) {
+                if (rooms[i].stage != stage) resolve()
+                if (rooms[i].users.findIndex(v => !v.end) < 0) {
+                    rooms[i].stage ++
+                    for (let k in rooms[i].users) {
+                        rooms[i].users[k].end = false
+                        rooms[i].users[k].data = undefined
+                    }
                     clearInterval(intervalID)
                     resolve()
                 }
             }, 100)
-        }).then(() => res.end(data))
+        }).then(() => res.end(userdata))
     }
 })
 

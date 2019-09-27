@@ -263,13 +263,13 @@ export class util_graves_buckshot extends util_area{
 }
 
 export class util_aatrox_blade extends util_area{
-  constructor (vm, pos) {
+  constructor (vm, src, pos) {
     super(vm, src)
     let info = PosInfo.board
     this.w = info.w1*2    // radius
     this.now = 0  // current tick
     this.pos = pos
-    this.coord = this.vm.getCoord(pos)
+    this.coord = this.vm.getCoord(...pos)
     this.post = 45
     this.base = [300, 600, 900]
     this.damage = this.base[this.src.lvl]
@@ -283,7 +283,7 @@ export class util_aatrox_blade extends util_area{
       for (let i in sixPos) {
         let pos = sixPos[i]
         let grid = grids[pos[0]][pos[1]]
-        if (grid && grid.camp==1) {
+        if (grid && grid.camp!=this.src.camp) {
           this.vm.damage(this, grid)
         }
       }
@@ -305,19 +305,19 @@ export class util_aatrox_blade extends util_area{
 
 
 export class util_chogath_rupture extends util_area{
-  constructor (vm, pos) {
+  constructor (vm, src, pos) {
     super(vm, src)
     this.w = PosInfo.board.w1*6
     this.radius = 3
     this.pos = pos
-    this.coord = this.vm.getCoord(pos)
+    this.coord = this.vm.getCoord(...pos)
     this.now = 0  // current tick
     this.pre = 90
     this.post = 60
     this.base = [175, 350, 525]
     this.damage = this.base[this.src.lvl]
     this.base_stun = [1.5, 1.75, 2]
-    this.stun = this.base_stun[this.src.lvl]
+    this.stun = this.base_stun[this.src.lvl] * 60
     this.stun_type = 0
   }
   act () {
@@ -328,10 +328,11 @@ export class util_chogath_rupture extends util_area{
         let grids = this.vm.board.grid
         for (let r in grids) {
           for (let c in grids[r]) {
-            if (grids[r][c] && grids[r][c].camp === 1 
+            if (grids[r][c] && grids[r][c].camp!=this.src.camp
               && this.vm.getDistance(...this.pos, r, c) <= this.radius) {
-                this.vm.damage(this, grids[r][c])
+                console.log(grids[r][c])
                 this.vm.stun(this, grids[r][c])
+                this.vm.damage(this, grids[r][c])
             }
           }
         }
