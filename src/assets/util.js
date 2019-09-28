@@ -158,6 +158,7 @@ export class util_yasuo_tornado extends util_area{
     this.damage = this.base[this.src.lvl]
     this.stun = 1.5 * 60
     this.stun_type = 0
+    this.type = 1
   }
   act () {
     if (this.status.prepare) {
@@ -216,6 +217,7 @@ export class util_graves_buckshot extends util_area{
     this.been = [this.src.status.target]
     this.post = 20
     this.damage = this.src.ad
+    this.type = 0
   }
   act () {
     if (this.status.prepare) {
@@ -273,6 +275,7 @@ export class util_aatrox_blade extends util_area{
     this.post = 45
     this.base = [300, 600, 900]
     this.damage = this.base[this.src.lvl]
+    this.type = 1
   }
   act () {
     if (this.status.prepare) {

@@ -69,6 +69,7 @@ import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
 import EquipInfo, { equip } from './assets/equip'
 import { schedule, upgradeExp } from './assets/script'
+import { DamageDisplay } from './assets/damageDisplay'
 
 export default {
   name: 'app',
@@ -98,6 +99,7 @@ export default {
         costUpgrade: 4,
         costRedeal: 2,
         damageRecord: [],
+        damageDisplays: [],
         grave: [],
         classes: {},
         schedule: {},
@@ -284,6 +286,7 @@ export default {
       this.drawEquips()
       this.drawSchedule()
       this.drawPlayers()
+      this.drawDamageDisplay()
       for (let i in this.queue) {
         this.queue[i]()
       }
@@ -657,6 +660,7 @@ export default {
       } else if (util.type === 1) {
         damage = this.mitigate(tgt.mr) * damage
       }
+      this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, damage))
       // add damage to record
       let record = this.game.damageRecord
       if (util.src.camp === 0) {
@@ -1352,6 +1356,12 @@ export default {
         let user = this.entry.room.users[i]
         ctx.fillText(user.hp, this.w/2+info.l, info.t+info.sph*i)
         ctx.fillText(user.name, this.w/2+info.l+info.spw, info.t+info.sph*i)
+      }
+    },
+    drawDamageDisplay () {
+      let ctx = this.ctx
+      for (let i in this.game.damageDisplays) {
+        this.game.damageDisplays[i].draw(ctx)
       }
     }
   }
