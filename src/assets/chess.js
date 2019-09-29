@@ -267,19 +267,24 @@ export class chess {
 
 export default [
   class Tristana extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 0,
       this._name = '麦林炮手',
-      this.size = 0.8,
-      this.cat = [0, 1],
       this.src = 'Tristana_d.png',
-      this.hp = 550,
+      this.cat = [0, 1],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 50,
-      this._ad = 50,
       this._as = 0.65,
       this.sp = 75,
       this._range = 4,
+      this._crit = 0.25
       this.armor = 20,
       this.mr = 20,
       this.util = {
@@ -287,7 +292,6 @@ export default [
         bomb_sp: 600,
         bomb_sz: 6
       },
-      this.lvl = 0
       this.buff = [
       ],
       this.spell_pre = 10
@@ -302,27 +306,31 @@ export default [
   },
 
   class Lucian extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 1,
       this._name = '圣枪游侠',
-      this.size = 0.8,
-      this.cat = [0, 2],
       this.src = 'Lucian_d.png',
-      this.hp = 550,
+      this.cat = [0, 2],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [600, 1080, 2160]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 35,
-      this._ad = 65,
       this._as = 0.65,
       this.range = 3,
       this.sp = 60,
       this.armor = 20,
       this.mr = 20,
+      this._crit = 0.25,
       this.util = {
         sp: 1000,
         spell_sp: 20,
         sz: 10,
       },
-      this.lvl = 0
       this.buff = [
       ]
       this.spell_pre = 0
@@ -349,22 +357,26 @@ export default [
   },
 
   class Yasuo extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 2,
       this._name = '疾风剑豪',
-      this.lvl = 0
-      this.size = 0.8,
-      this.cat = [3, 4],
       this.src = 'Yasuo_d.png',
-      this.hp = 700,
+      this.cat = [3, 4],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [750, 1350, 2700]
+      this.ad_base = [75, 135, 270]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 25,
-      this._ad = 75,
       this._as = 1,
       this.range = 1,
       this.sp = 60,
       this.armor = 35,
       this.mr = 20,
+      this._crit = 0.25,
       this.util = {
         sp: 1000,
       },
@@ -399,22 +411,26 @@ export default [
   },
 
   class Graves extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 3,
       this._name = '法外狂徒',
-      this.lvl = 0
-      this.size = 0.8,
-      this.cat = [0, 5],
       this.src = 'Graves_d.png',
-      this.hp = 450,
+      this.cat = [0, 5],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [450, 810, 1620]
+      this.ad_base = [55, 99, 198]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 0,
-      this._ad = 55,
       this._as = 0.55,
       this.range = 1,
       this.sp = 60,
       this.armor = 30,
       this.mr = 20,
+      this._crit = 0.25,
       this.util = {
         sp: 1000,
       },
@@ -425,22 +441,26 @@ export default [
   },
 
   class Aatrox extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 4,
       this._name = '暗裔剑魔',
-      this.lvl = 0
-      this.size = 0.8,
-      this.cat = [3, 6],
       this.src = 'Aatrox.png',
-      this.hp = 700,
+      this.cat = [3, 6],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [450, 810, 1620]
+      this.ad_base = [55, 99, 198]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 75,
-      this._ad = 65,
       this._as = 0.65,
       this.range = 1,
       this.sp = 60,
       this.armor = 25,
       this.mr = 20,
+      this._crit = 0.25,
       this.buff = [
       ]
       this.util = {
@@ -458,22 +478,26 @@ export default [
   },
 
   class Chogath extends chess {
-    constructor (vm) {
+    constructor (vm, lvl) {
       super(vm)
       this.id = 5,
       this._name = '虚空恐惧',
-      this.lvl = 0
-      this.size = 0.8,
-      this.cat = [7, 8],
       this.src = 'Chogath.png',
-      this.hp = 1000,
+      this.cat = [7, 8],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [1000, 1800, 3600]
+      this.ad_base = [70, 126, 252]
+      this.size = this.size_base[this.lvl],
+      this.hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
       this.mp = 150,
-      this._ad = 70,
       this._as = 0.6,
       this.range = 1,
       this.sp = 60,
       this.armor = 20,
       this.mr = 20,
+      this._crit = 0.25,
       this.buff = [
       ]
       this.util = {

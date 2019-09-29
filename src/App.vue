@@ -124,8 +124,8 @@ export default {
       util: [],
       showChess: undefined,
       showPos: undefined,
-      ip: 'http://47.106.171.107:80/',
-      // ip: 'http://localhost:81/',
+      // ip: 'http://47.106.171.107:80/',
+      ip: 'http://localhost:81/',
     }
   },
   created () {
@@ -487,10 +487,9 @@ export default {
     },
     buyCard(storeId) {
       let wannaBuy = this.store.cards[storeId]
-      if (this.game.gold >= wannaBuy.cost) {
+      if (this.game.gold >= wannaBuy.cost && this.addChess(wannaBuy.id)) {
         this.store.cards[storeId] = undefined
         this.game.gold -= wannaBuy.cost
-        this.addChess(wannaBuy.id)
       }
     },
     updateGold () {
@@ -816,7 +815,7 @@ export default {
           r = chess.pos[0]
           c = chess.pos[1]
         }
-        this.setChess(r, c, this.createChess(chess.id, camp))
+        this.setChess(r, c, this.createChess(chess.id, camp, chess.lvl))
         if (chess.equip) {
           for (let j in chess.equip) {
             this.board.grid[r][c].equip(new EquipInfo[chess.equip[j]]())
@@ -1062,18 +1061,56 @@ export default {
     },
     addChess (cardId) {
       let cards = this.hand.cards
-      for (let i in cards) {
-        if (cards[i] === undefined) {
-          cards[i] = this.createChess(cardId, 0)
-          if (this.allsrc.indexOf(cards[i].src) < 0) {
-            this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+      let grids = this.board.grid
+      // enough to upgrade ?
+      let count = [[], [], []]
+      let flag_upgrade = false
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (grids[r][c] && grids[r][c].id === cardId) {
+            count[grids[r][c].lvl].push([r,c])
           }
-          break
         }
       }
+      for (let i in cards) {
+        if (cards[i] && cards[i].id === cardId) {
+          count[cards[i].lvl].push(i)
+        }
+      }
+      // upgrade
+      for (let i = 0; i < 2; i++) {
+        if ((i === 0 && count[i].length === 2) || (i === 1 && count[i].length === 3)) {
+          flag_upgrade = true
+          for (let j in count[i]) {
+            let pos = count[i][j]
+            let chess = j == 0 ? this.createChess(cardId, 0, i+1) : undefined
+            if (pos.length === 2) {
+              grids[pos[0]][pos[1]] = chess
+            } else {
+              cards[pos] = chess
+            }
+          }
+          count[i+1].push(count[i][0])
+        }
+      }
+      if (flag_upgrade) return true
+      // hand free
+      else {
+        for (let i in cards) {
+          if (cards[i] === undefined) {
+            cards[i] = this.createChess(cardId, 0, 0)
+            if (this.allsrc.indexOf(cards[i].src) < 0) {
+              this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+            }
+            return true
+          }
+        }
+      }
+      // no where to put new chess
+      return false
     },
-    createChess (id, camp) {
-      let obj = new ChessInfo[id](this)
+    createChess (id, camp, lvl) {
+      let obj = new ChessInfo[id](this, lvl)
       obj.hold = false         // init hold
       obj.pos = undefined
       obj.status = {}
