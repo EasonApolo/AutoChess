@@ -228,6 +228,47 @@ export class buff_class_gun extends buff {
   }
 }
 
+export class buff_class_void extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.name = '虚空'
+  }
+  response(type, ...args) {
+    if (['atk'].includes(type)) {
+      let trigger = randInt(2)
+      if (trigger) {
+        let grids = this.vm.board.grid
+        let avails = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            if (grids[r][c] && grids[r][c].camp !== this.src.camp
+            && this.vm.getDistance(r, c, ...this.src.pos) < this.src.range  // in range
+            && grids[r][c] !== this.src.status.tgt) {                       // not current tgt
+              avails.push([r,c])
+            }
+          }
+        }
+        if (this.src.id === 1) {
+          console.log(avails)
+        }
+        if (avails.length === 0) return
+        else if (avails.length > this.extra) {
+          do {
+            avails.splice(randInt(avails.length), 1)
+          } while (avails.length > this.extra)
+        }
+        if (this.src.id === 1) {
+          console.log(avails)
+        }
+        for (let i in avails) {
+          this.vm.createUtilAttack(this.src, grids[avails[i][0]][avails[i][1]])
+        }
+      }
+    }
+  }
+
+}
+
 
 export class chess {
   constructor (vm) {
