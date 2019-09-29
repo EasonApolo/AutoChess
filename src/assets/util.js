@@ -1,4 +1,4 @@
-import { removeFromArr } from "./helper";
+import { removeFromArr, randInt } from "./helper";
 import { buff_tristana_explosiveSpark } from "./chess";
 import PosInfo from './position'
 
@@ -36,8 +36,13 @@ export class util_tgt {
 export class util_attack extends util_tgt {
   constructor (vm, src, tgt) {
     super(vm, src, tgt)
-    this.damage = src.ad
+    if (src.crit*100 > randInt(100)) {
+      this.damage = src.ad * src.crit_fold
+    } else {
+      this.damage = src.ad
+    }
     this.sp = src.util.sp
+    this.vm.dealBuff('util_type')
     this.type = 0
   }
   draw (ctx, xbase, ybase) {

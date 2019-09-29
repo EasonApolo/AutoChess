@@ -67,7 +67,7 @@ import ColorInfo from './assets/color'
 import { setTimeout } from 'timers'
 import { util_tgt, util_attack} from './assets/util'
 import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
-import EquipInfo, { equip } from './assets/equip'
+import EquipInfo, { equip, merge_map } from './assets/equip'
 import { schedule, upgradeExp } from './assets/script'
 import { DamageDisplay } from './assets/damageDisplay'
 
@@ -426,6 +426,10 @@ export default {
       // click store
       info = PosInfo.store
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>this.h-info.h && y<this.h) {
+        if (this.hold instanceof chess) {
+          this.sellHoldChess()
+          return
+        }
         let left = x-(this.w/2-info.w/2)
         let top = y-(this.h-info.h)
         if (left%(info.w1+info.sp)<info.sp || top%(info.w1+info.sp)<info.sp) return
@@ -456,6 +460,28 @@ export default {
     /*
       store related functions
       */
+    sellHoldChess () {
+      let lvl = this.hold.lvl
+      let cost = ChessInfo[this.hold.id].cost
+      let price
+      switch (lvl) {
+        case 0: price = cost;break;
+        case 1: price = cost+2;break;
+        case 2: price = cost+4;break;
+      }
+      if (!price) console.log('price is undefined')
+      // put chess.equips into this.equips, redundant are discarded
+      if (this.hold.equips.length > 0) {
+        for (let i in this.equips) {
+          if (!this.equips[i]) {
+            this.equips[i] = this.hold.equips.splice(0, 1)
+            if (this.hold.equips.length === 0) break
+          }
+        }
+      }
+      this.game.gold += price
+      this.hold = undefined
+    },
     deal () {
       for (let i = 0; i < 5; i++) {
         let cardId = Math.floor(Math.random()*CardInfo.length)
@@ -555,9 +581,9 @@ export default {
                 chess.status.attack += 16
                 if (chess.status.attack >= attackTime) {
                   chess.status.attack = 0
-                  this.dealBuff('attack', chess)
+                  this.dealBuff('atk', chess)
                   this.createUtilAttack(chess, chess.status.target)
-                  if (chess._mp >= chess.mp) {  // 攻击完成后才会施法
+                  if (chess.mp_ >= chess.mp) {  // 攻击完成后才会施法
                     this.castSpell(chess)
                   }
                 }
@@ -619,10 +645,20 @@ export default {
         }
       }
     },
+    getLvl1EquipId (id1, id2) {
+      return merge_map[id1][id2] || merge_map[id2][id1]
+    },
     equiping (chess) {
       if (chess && this.hold instanceof equip) {
-        chess.equip(this.hold)
-        this.hold = undefined
+        if (chess.equips.length > 0 
+        && chess.equips[chess.equips.length - 1].lvl===1 && this.hold.lvl===1) {
+          let eid = this.getLvl1EquipId(chess.equips[chess.equips.length - 1].id, this.hold.id)
+          chess.unequip(chess.equips.length - 1)
+          chess.equip(new EquipInfo[eid]())
+        }
+        if (chess.equip(this.hold)) {
+          this.hold = undefined
+        }
       }
     },
     // if chess cannot move, return false
@@ -647,37 +683,31 @@ export default {
       if (chess.spell) {
         chess.status.attack = undefined
         chess.status.spell = 0
-        chess._mp = 0
+        chess.mp_ = 0
       }
     },
     damage (util, tgt=undefined) {
       if (!tgt) tgt = util.tgt
-      // compute mitigated damage
+      // mitigate damage
       let damage = util.damage
       if (util.type === 0) {
         damage = this.mitigate(tgt.armor) * damage
       } else if (util.type === 1) {
         damage = this.mitigate(tgt.mr) * damage
       }
+      // damage reduction
+      this.dealBuff('r_dmg', tgt, damage, util)
+      // damage value confirmed, add to display & record
       this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, damage))
-      // add damage to record
-      let record = this.game.damageRecord
-      if (util.src.camp === 0) {
-        let intDamage = Math.round(damage)
-        let pair = record.find(x => {return x.id === util.src.id})
-        if (pair) {
-          pair.val += intDamage
-        } else {
-          record.push({id: util.src.id, val: intDamage})
-        }
-        record.sort((a,b) => {a.val < b.val})
-      }
-      // deal damage
-      tgt._hp -= damage
-      // deal buffs
-      this.dealBuff('damage', tgt, util.damage, util)  // use pre-mitigated damage
+      this.addDamageToRecord(util, damage)
+      // damage on shield
+      damage = this.dealBuff('s_dmg', tgt, damage, util)
+      // damage on hp
+      tgt.hp_ -= damage
+      // after hurt damage
+      this.dealBuff('dmg', tgt, util.damage, util)  // use pre-mitigated damage
       // check vital status
-      if (tgt._hp <= 0) {
+      if (tgt.hp_ <= 0) {
         tgt.die()
       }
     },
@@ -693,20 +723,39 @@ export default {
       tgt.status.ready = undefined
       tgt.status.stun = {type:util.stun_type,p:0,pn:util.stun}
     },
+    addDamageToRecord (util, damage) {
+      let record = this.game.damageRecord
+      if (util.src.camp === 0) {
+        let intDamage = Math.round(damage)
+        let pair = record.find(x => {return x.id === util.src.id})
+        if (pair) {
+          pair.val += intDamage
+        } else {
+          record.push({id: util.src.id, val: intDamage})
+        }
+        record.sort((a,b) => {a.val < b.val})
+      }
+    },
     mitigate (n) {
       return 100 / (n + 100)
     },
     dealBuff (type, ...args) {
-      if (type === 'damage') {
+      if (type === 'dmg') {
         let [chess, val, util] = args
         for (let i in chess.buff) {
           chess.buff[i].response(type, val, util)
         }
-      } else if (type === 'attack') {
+      } else if (type === 'atk') {
         let [chess] = args
         for (let i in chess.buff) {
           chess.buff[i].response(type)
         }
+      } else if (type === 's_dmg') {
+        let [chess, damage, util] = args
+        for (let i in chess.buff) {
+          damage = chess.buff[i].response(type, damage, util)
+        }
+        return damage
       }
     },
     checkRemain () {
@@ -749,9 +798,9 @@ export default {
           if (g !== undefined) {
             g.status.ready = true
             g.orient = 0
-            g._hp = g.hp
+            g.hp_ = g.hp
             if (g.mp) {
-              g._mp = 0
+              g.mp_ = g.mp_init ? g.mp_init : 0
               g.buff.push(new buff_regainMana(this, g))
             }
           }
@@ -1190,9 +1239,9 @@ export default {
             ctx.drawImage(img, cenL-imgW/2+biasX, cenT-imgW/2+biasY, imgW, imgW)
             // hp mp
             ctx.fillStyle = chess.camp===0 ? ColorInfo.chessHp:ColorInfo.chessHpOppo
-            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess._hp/chess.hp*info.hpW, info.hpH)
+            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess.hp_/chess.hp*info.hpW, info.hpH)
             ctx.fillStyle = ColorInfo.chessMp
-            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess._mp/chess.mp*info.hpW, info.hpH)
+            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess.mp_/chess.mp*info.hpW, info.hpH)
             if (chess.status.spell) {
               ctx.fillStyle = ColorInfo.chessSp
               ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, chess.status.spell/chess.spell_pre*info.hpW, info.hpH)

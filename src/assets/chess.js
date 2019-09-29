@@ -2,6 +2,7 @@ import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
+import { timingSafeEqual } from "crypto";
 
 export class buff {
   constructor (vm, src) {
@@ -15,13 +16,13 @@ export class buff_regainMana extends buff {
     super(vm, src)
   }
   response (type, ...args) {
-    if (['damage', 'attack'].includes(type)) {
-      if (type === 'damage') {
+    if (['dmg', 'atk'].includes(type)) {
+      if (type === 'dmg') {
         let val = args[0]
         let util = args[1]
         let regain = val * 0.1
         this.src._mp += regain
-      } else if (type === 'attack') {
+      } else if (type === 'atk') {
         this.src._mp += randInt(5, 6)
       }
       // prevent overflow
@@ -38,7 +39,7 @@ export class buff_lucian_nextAttackWith extends buff {
     this.base = [100, 225, 350]
   }
   response (type, ...args) {
-    if (type === 'attack') {
+    if (type === 'atk') {
       setTimeout(() => {
         if (this.tgt) {
           new util_lucian_second_bullet(this.vm, this.src, this.tgt, this.base[this.src.lvl])
@@ -59,17 +60,12 @@ export class buff_tristana_explosiveSpark extends buff {
     this.lvl = src.lvl
     this.damage = 0
     this.type = 1
-    setTimeout(() => {
-      if (this.damage === 0) {    // warning
-        this.explode()
-      }
-    }, 4000)
+    this.duration = 240
   }
   response (type, ...args) {
-    if (type === 'damage') {
+    if (type === 'dmg') {
       let util = args[1]
       if (util.tgt === this.tgt && util.src === this.src) {
-        console.log(this.stage, this.src.pos)
         this.stage ++
         if (this.stage >= 3) {
           this.explode()
@@ -91,6 +87,8 @@ export class buff_tristana_explosiveSpark extends buff {
     this.vm.damage(this)
   }
   draw (ctx, cenL, cenT) {
+    this.now ++
+    if (this.now === this.duration && this.damage === 0) this.explode() // this.damage=0 means it hasn't exploded, this is a flag
     ctx.fillStyle = 'red'
     let r = 6*(this.stage+1)
     ctx.fillRect(cenL-r, cenT-r,2*r,2*r)
@@ -120,7 +118,7 @@ export class buff_graves_buckshot extends buff {
     this.name = '大号铅弹'
   }
   response (type, ...args) {
-    if (['attack'].includes(type)) {
+    if (['atk'].includes(type)) {
       let len = (this.src.range+1)*2 *PosInfo.board.w1*PosInfo.board.ratio // if range 1, attack 2block(4w), if range 
       let [x1, y1] = this.vm.getCoord(...this.src.status.target.pos)
       let [x0, y0] = this.vm.getCoord(...this.src.pos)
@@ -140,6 +138,54 @@ export class buff_graves_buckshot extends buff {
   }
 }
 
+export class buff_kassadin_netherblade extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.name = '幽魂之刃'
+    this.base = [25, 50, 75]
+    this.val = this.base[src.lvl]
+    this.shield_duration = 4*60
+  }
+  response (type, ...args) {
+    if (['atk'].includes(type)) {
+      let tgt_mp = this.src.status.target.mp_
+      if (tgt_mp) {
+        this.src.status.target.mp_ = tgt_mp > this.val ? tgt_mp - this.val : 0
+        this.buff.push(new buff_shield(this.vm, this.src, this.val, this.shield_duration))
+      }
+    }
+  }
+}
+
+export class buff_shield extends buff {
+  constructor (vm, src, val, duration) {
+    super(vm, src)
+    this.val = val
+    this.duration = duration
+    this.now = 0
+    this.type = 0 // 0 for all type daamge, 1 for spell damage only; this is backward-compatible
+  }
+  response (type, ...args) {
+    if (type === 's_dmg') {
+      let [damage, util] = args
+      if (this.type === 1 && util.type !== 1) return
+      if (damage < this.val) {
+        damage = 0
+        this.val -= damage
+      } else {
+        damage -= this.val
+        removeFromArr(this.src.buff, this)
+      }
+    }
+  }
+  draw () {
+    this.now++
+    if (this.now === this.duration) {
+      removeFromArr(this.src.buff, this)
+    }
+  }
+}
+
 export class buff_class_gun extends buff {
   constructor (vm, src, stage) {
     super(vm, src)
@@ -148,7 +194,7 @@ export class buff_class_gun extends buff {
     this.name = '枪手'
   }
   response(type, ...args) {
-    if (['attack'].includes(type)) {
+    if (['atk'].includes(type)) {
       let trigger = randInt(2)
       if (trigger) {
         let grids = this.vm.board.grid
@@ -186,6 +232,7 @@ export class buff_class_gun extends buff {
 export class chess {
   constructor (vm) {
     this.vm = vm
+    this._crit_fold = 2
   }
   die () {
     // remove chess from board
@@ -201,13 +248,18 @@ export class chess {
     if (this.equips.length < 3) {
       this.equips.push(e)
       e.equipTo(this)
+      return true
     }
   }
-  get ad () {
+  unequip (index) {
+    this.equips[index].unequipTo()
+    this.equips.splice(index, 1)
+  }
+  __checkBuff (raw, type) {
     let rate = 1
     let bonus = 0
     for (let i in this.buff) {
-      let res = this.buff[i].response('ad')
+      let res = this.buff[i].response(type)
       if (res) {
         if (res[1]) {
           rate += res[0]
@@ -216,10 +268,7 @@ export class chess {
         }
       }
     }
-    return (this._ad + bonus) * rate
-  }
-  set ad (ad) {
-    this._ad = ad
+    return (raw + bonus) * rate
   }
   get name () {
     return this._name
@@ -227,39 +276,48 @@ export class chess {
   set name (name) {
     this._name = name
   }
+  get ad () {
+    return this.__checkBuff(this._ad, 'ad')
+  }
+  set ad (ad) {
+    this._ad = ad
+  }
+  get hp () {
+    return this.__checkBuff(this._hp, 'hp')
+  }
+  set hp (hp) {
+    this._hp = hp
+  }
   get as () {
-    let rate = 1
-    for (let i in this.buff) {
-      let res = this.buff[i].response('as')
-      if (res) {
-        if (res[1]) {
-          rate += res[0]
-        } else {
-          console.log('myError：as buff not rate')
-        }
-      }
-    }
-    return this._as * rate
+    return this.__checkBuff(this._as, 'as')
   }
   set as (as) {
     this._as = as
   }
   get range () {
-    let rate = 1
-    for (let i in this.buff) {
-      let res = this.buff[i].response('range')
-      if (res) {
-        if (res[1]) {
-          rate += res[0]
-        } else {
-          console.log('myError：as buff not rate')
-        }
-      }
-    }
-    return this._range * rate
+    return this.__checkBuff(this._range, 'range')
   }
   set range (range) {
     this._range = range
+  }
+  get crit () {
+    return this.__checkBuff(this._crit, 'crit')
+  }
+  set crit (crit) {
+    this._crit = crit
+  }
+  get crit_fold () {
+    return this.__checkBuff(this._crit_fold, 'crit_fold')
+  }
+  set crit_fold (crit_fold) {
+    this._crit_fold = crit_fold
+  }
+  get mp_init () {
+    if (!this._mp_init) return undefined
+    return this.__checkBuff(this._mp_init, 'mp_init')
+  }
+  set mp_init (mp_init) {
+    this._mp_init = mp_init
   }
 }
 
@@ -278,13 +336,13 @@ export default [
       this.hp_base = [500, 900, 1800]
       this.ad_base = [50, 90, 180]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 50,
       this._as = 0.65,
       this.sp = 75,
       this._range = 4,
-      this._crit = 0.25
+      this._crit = 0.25,
       this.armor = 20,
       this.mr = 20,
       this.util = {
@@ -317,7 +375,7 @@ export default [
       this.hp_base = [600, 1080, 2160]
       this.ad_base = [65, 117, 234]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 35,
       this._as = 0.65,
@@ -368,7 +426,7 @@ export default [
       this.hp_base = [750, 1350, 2700]
       this.ad_base = [75, 135, 270]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 25,
       this._as = 1,
@@ -422,7 +480,7 @@ export default [
       this.hp_base = [450, 810, 1620]
       this.ad_base = [55, 99, 198]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 0,
       this._as = 0.55,
@@ -452,7 +510,7 @@ export default [
       this.hp_base = [450, 810, 1620]
       this.ad_base = [55, 99, 198]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 75,
       this._as = 0.65,
@@ -489,9 +547,10 @@ export default [
       this.hp_base = [1000, 1800, 3600]
       this.ad_base = [70, 126, 252]
       this.size = this.size_base[this.lvl],
-      this.hp = this.hp_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
       this.mp = 150,
+      this._mp_init = 50
       this._as = 0.6,
       this.range = 1,
       this.sp = 60,
@@ -510,6 +569,35 @@ export default [
           this.status.spell = undefined
           this.status.attack = 0
         }
+      }
+    }
+  },
+
+  class Kassadin extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 6,
+      this._name = '虚空行者',
+      this.src = 'Kassadin.png',
+      this.cat = [7, 9],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [40, 72, 144]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this._as = 0.55,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 35,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+        new buff_kassadin_netherblade(this.vm, this)
+      ]
+      this.util = {
+        sp: 1000,
       }
     }
   }
