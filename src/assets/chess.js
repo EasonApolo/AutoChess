@@ -186,6 +186,63 @@ export class buff_shield extends buff {
   }
 }
 
+export class buff_vayne_silverbolts extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+  }
+  response (type, args) {
+    if (['atk'].includes(type)) {
+      let buff = this.src.status.target.buff
+      let flag = false
+      for (let i in buff) {
+        if (buff[i] instanceof buff_vayne_silverbolts_target) {
+          flag=true
+        }
+      }
+      if (!flag) {
+        buff.push(new buff_vayne_silverbolts_target())
+      }
+    }
+  }
+}
+export class buff_vayne_silverbolts_target extends buff {
+  constructor (vm, src, tgt) {
+    super(vm, src)
+    this.tgt = tgt
+    this.rate_base = [0.08, 0.12, 0.16]
+    this.rate = this.rate_base[src.lvl]
+    this.stage = 0
+    this.type = 2
+  }
+  response (type, args) {
+    if (['dmg'].includes(type)) {
+      this.stage ++
+      if (this.stage === 3) {
+        this.vm.damage(this, this.tgt)
+        removeFromArr(this.tgt.buff, this)
+      }
+    }
+  }
+  get damage () {
+    return this.tgt.hp * this.rate
+  }
+  set damage () {}
+  draw (ctx, cenL, cenT) {
+    ctx.lineWidth = 5
+    ctx.fillStyle = '#cccccc'
+    let r = 6*(this.stage+1)
+    ctx.beginPath()
+    if (this.stage > 0) {
+      ctx.arc(cenL, cenT, 80, 0, 2*Math.PI)
+    }
+    if (this.stage > 1) {
+      ctx.arc(cenL, cenT, 90, 0, 2*Math.PI)
+    }
+    ctx.stroke()
+    ctx.lineWidth = 1
+  }
+}
+
 export class buff_class_gun extends buff {
   constructor (vm, src, stage) {
     super(vm, src)
@@ -234,39 +291,23 @@ export class buff_class_void extends buff {
     this.name = '虚空'
   }
   response(type, ...args) {
-    if (['atk'].includes(type)) {
-      let trigger = randInt(2)
-      if (trigger) {
-        let grids = this.vm.board.grid
-        let avails = []
-        for (let r in grids) {
-          for (let c in grids[r]) {
-            if (grids[r][c] && grids[r][c].camp !== this.src.camp
-            && this.vm.getDistance(r, c, ...this.src.pos) < this.src.range  // in range
-            && grids[r][c] !== this.src.status.tgt) {                       // not current tgt
-              avails.push([r,c])
-            }
-          }
-        }
-        if (this.src.id === 1) {
-          console.log(avails)
-        }
-        if (avails.length === 0) return
-        else if (avails.length > this.extra) {
-          do {
-            avails.splice(randInt(avails.length), 1)
-          } while (avails.length > this.extra)
-        }
-        if (this.src.id === 1) {
-          console.log(avails)
-        }
-        for (let i in avails) {
-          this.vm.createUtilAttack(this.src, grids[avails[i][0]][avails[i][1]])
-        }
-      }
+    if (['util_type'].includes(type)) {
+      return 2
     }
   }
+}
 
+export class buff_class_noble extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.name = '贵族'
+    this.heal = 30
+  }
+  response(type, ...args) {
+    if (['atk'].includes(type)) {
+      this.vm.heal(this, this.src)
+    }
+  }
 }
 
 
@@ -636,6 +677,35 @@ export default [
       this._crit = 0.25,
       this.buff = [
         new buff_kassadin_netherblade(this.vm, this)
+      ]
+      this.util = {
+        sp: 1000,
+      }
+    }
+  },
+
+  class Vayne extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 7,
+      this._name = '暗夜猎手',
+      this.src = 'Vayne.png',
+      this.cat = [2, 10],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [40, 72, 144]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this._as = 0.7,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+        new buff_vayne_silverbolts(this.vm, this)
       ]
       this.util = {
         sp: 1000,

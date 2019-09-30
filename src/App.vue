@@ -686,10 +686,16 @@ export default {
         chess.mp_ = 0
       }
     },
+    heal (util, tgt) {
+      tgt.hp_ += this.val
+      if (tgt.hp_ > tgt.hp) tgt.hp_ = tgt.hp
+    },
     damage (util, tgt=undefined) {
       if (!tgt) tgt = util.tgt
-      // mitigate damage
       let damage = util.damage
+      // damage type
+      let buff_type = this.dealBuff('util_type', util.src)
+      if (buff_type) util.type = buff_type
       if (util.type === 0) {
         damage = this.mitigate(tgt.armor) * damage
       } else if (util.type === 1) {
@@ -739,24 +745,29 @@ export default {
     mitigate (n) {
       return 100 / (n + 100)
     },
-    dealBuff (type, ...args) {
-      if (type === 'dmg') {
-        let [chess, val, util] = args
-        for (let i in chess.buff) {
-          chess.buff[i].response(type, val, util)
-        }
-      } else if (type === 'atk') {
-        let [chess] = args
-        for (let i in chess.buff) {
-          chess.buff[i].response(type)
-        }
-      } else if (type === 's_dmg') {
-        let [chess, damage, util] = args
-        for (let i in chess.buff) {
-          damage = chess.buff[i].response(type, damage, util)
-        }
-        return damage
+    dealBuff (type, chess, args) {
+      let res = undefined
+      for (let i in chess.buff) {
+        res = chess.buff[i].response(type, ...args)
       }
+      return res
+      // if (type === 'dmg') {
+      //   let [chess, val, util] = args
+      //   for (let i in chess.buff) {
+      //     chess.buff[i].response(type, val, util)
+      //   }
+      // } else if (type === 'atk') {
+      //   let [chess] = args
+      //   for (let i in chess.buff) {
+      //     chess.buff[i].response(type)
+      //   }
+      // } else if (type === 's_dmg') {
+      //   let [chess, damage, util] = args
+      //   for (let i in chess.buff) {
+      //     damage = chess.buff[i].response(type, damage, util)
+      //   }
+      //   return damage
+      // }
     },
     checkRemain () {
       let grid = this.board.grid
