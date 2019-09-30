@@ -371,3 +371,127 @@ export class util_chogath_rupture extends util_area{
     ctx.lineWidth = '1'
   }
 }
+
+
+export class util_varus_arrow extends util_area{
+  constructor (vm, src) {
+    super(vm, src)
+    this.d = PosInfo.board.w1*16
+    let tgtCoord = this.vm.getCoord(...this.src.status.target.pos)
+    let srcCoord = this.vm.getCoord(...this.src.pos)
+    let r = this.d / this.vm.getEuclid(...tgtCoord, ...srcCoord)
+    this.d_x = (tgtCoord[0] - srcCoord[0]) * r
+    this.d_y = (tgtCoord[1] - srcCoord[1]) * r
+    this.x0 = srcCoord[0]
+    this.y0 = srcCoord[1]
+    this.x = this.x0
+    this.y = this.y0
+    this.now = 0
+    this.rate = 0
+    this.pre = 60
+    this.post = 60
+    this.base = [300, 550, 800]
+    this.damage = this.base[this.src.lvl]
+    this.w = 20
+    this.been = []
+  }
+  act () {
+    if (this.status.prepare) {
+      this.now ++
+      this.rate = this.now / this.pre
+      this.x = this.x0 + this.rate * this.d_x
+      this.y = this.y0 + this.rate * this.d_y
+      if (this.now % 2 === 0) {
+        let pos = this.vm.getPosByCoord(this.x, this.y)
+        if (!pos) return  // out of board
+        if (this.been.findIndex(v=>v===pos) < 0) {
+          this.vm.damage(this, this.vm.board.grid[pos[0]][pos[1]])
+          this.been.push(pos)
+        }
+      }
+      if (this.now === this.pre) {
+        this.status = {done: true}
+        this.now = 0
+      }
+    } else if (this.status.done) {
+      if (this.now === this.post) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.now ++
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    let end_x = this.x-this.d_x*0.1
+    let end_y = this.y-this.d_y*0.1
+    let grd = ctx.createLinearGradient(this.x, this.y)
+    grd.addColorStop(0, 'black')
+    grd.addColorStop(1, 'white')
+    ctx.strokeStyle = grd
+    if (this.status.prepare) {
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.moveTo(this.x+xbase, this.y+ybase)
+      ctx.lineTo(end_x+xbase, end_y+ybase)
+      ctx.stroke()
+      ctx.lineWidth = 1
+    }
+  }
+}
+
+
+export class util_ashe_arrow extends util_area{
+  constructor (vm, src, pos) {
+    super(vm, src)
+    this.d = PosInfo.board.w1*30
+    let tgtCoord = this.vm.getCoord(...pos)
+    let srcCoord = this.vm.getCoord(...this.src.pos)
+    let r = this.d / this.vm.getEuclid(...tgtCoord, ...srcCoord)
+    this.d_x = (tgtCoord[0] - srcCoord[0]) * r
+    this.d_y = (tgtCoord[1] - srcCoord[1]) * r
+    this.x0 = srcCoord[0]
+    this.y0 = srcCoord[1]
+    this.x = this.x0
+    this.y = this.y0
+    this.now = 0
+    this.rate = 0
+    this.pre = 120
+    this.base = [200, 400, 600]
+    this.damage = this.base[this.src.lvl]
+    this.base_stun = [1, 1.5, 2]
+    this.stun = this.base_stun[this.src.lvl] * 60
+    this.stun_type = 0
+    this.type = 1
+  }
+  act () {
+    this.now ++
+    this.rate = this.now / this.pre
+    this.x = this.x0 + this.rate * this.d_x
+    this.y = this.y0 + this.rate * this.d_y
+    if (this.now % 2 === 0) {
+      let pos = this.vm.getPosByCoord(this.x, this.y)
+      if (!pos) return  // out of board
+      let tgt = this.vm.board.grid[pos[0]][pos[1]]
+      if (tgt && tgt.camp !== this.src.camp) {
+        this.vm.damage(this, tgt)
+        this.vm.stun(this, tgt)
+        removeFromArr(this.vm.util, this)
+      }
+    }
+    if (this.now === this.pre) {
+      removeFromArr(this.vm.util, this)
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    let end_x = this.x-this.d_x*0.1
+    let end_y = this.y-this.d_y*0.1
+    ctx.strokeStyle = 'rgb(150,150,255)'
+    if (this.status.prepare) {
+      ctx.lineWidth = 20
+      ctx.beginPath()
+      ctx.moveTo(this.x+xbase, this.y+ybase)
+      ctx.lineTo(end_x+xbase, end_y+ybase)
+      ctx.stroke()
+      ctx.lineWidth = 1
+    }
+  }
+}

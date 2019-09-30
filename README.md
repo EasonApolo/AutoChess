@@ -54,7 +54,7 @@
 | Fiora |  | Gangplank |  |
 | Garen |  | Gnar |  |
 | Graves | √ | Karthus |  |
-| Kassadin |  | Katarina |  |
+| Kassadin | √ | Katarina |  |
 | Kayle |  | Kennen |  |
 | Khazix |  | Kindred |  |
 | Leona |  | Lissandra |  |
@@ -66,7 +66,7 @@
 | Sejuani |  | Shen |  |
 | Shyvana |  | Swain |  |
 | Tristana | √ | Varus |  |
-| Vayne |  | Veigar |  |
+| Vayne | √ | Veigar |  |
 | Volibear |  | Warwick |  |
 | Yasuo | √ | Zed |  |
 | Twisted Fate |  | Camille |  |
@@ -78,9 +78,9 @@
 | Demon |  | Dragon |  |
 | Exile |  | Glacial |  |
 | Hextech |  | Imperial |  |
-| Noble |  | Ninja |  |
+| Noble | √ | Ninja |  |
 | Pirate |  | Phantom |  |
-| Robot |  | Void |  |
+| Robot |  | Void | √ |
 | Wild |  | Yordle |  |
 | Assasin |  | Blademaster |  |
 | Brawler |  | Elementalist |  |
@@ -92,7 +92,7 @@
 | ---- | ---- | ---- | ---- |
 | B.F. Sword |  | Chain Vest |  |
 | Giant's Belt |  | Needlessly Large Rod |  |
-| Negatron Cloak |  | Recurve Bow |  |
+| Negatron Cloak |  | Recurve Bow | √ |
 | Spatula |  | Tear of the Goddess |  |
 | Blade of the Ruined King |  | Bloodthirster |  |
 | Cursed Blade |  | Darkin |  |

@@ -12,7 +12,8 @@ export default [
   {name: "虚空", stage: [2,4], buff: set_buff_class_void},
   {name: "斗士", stage: [2,4,6]}, //8
   {name: "法师", stage: [3,6,9]}, //9
-  {name: "游侠", stage: [3,6,9]}, //10
+  {name: "游侠", stage: [2,4]}, //10
+  {name: "极地", stage: [2,4,6]}, //11
 ]
 
 export function set_buff_class_gun (vm, camp, stage) {

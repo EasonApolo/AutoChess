@@ -711,5 +711,79 @@ export default [
         sp: 1000,
       }
     }
+  },
+
+  class Varus extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 8,
+      this._name = '惩戒之箭',
+      this.src = 'Varus.png',
+      this.cat = [6, 10],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 75,
+      this._as = 0.7,
+      this.range = 4,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 90
+      this.spell = function piercing_arrow () {
+        if (this.status.target) {
+          new util_varus_arrow(this.vm, this)
+          this.status.spell = undefined
+          this.status.attack = 0
+        }
+      }
+    }
+  },
+
+  class Varus extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 9,
+      this._name = '寒冰射手',
+      this.src = 'Ashe.png',
+      this.cat = [10, 11],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 125,
+      this._as = 0.7,
+      this.range = 4,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 90
+      this.spell = function enchanted_crystal_arrow () {
+        if (this.status.target) {
+          new util_varus_arrow(this.vm, this)
+          this.status.spell = undefined
+          this.status.attack = 0
+        }
+      }
+    }
   }
 ]

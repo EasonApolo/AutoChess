@@ -886,7 +886,6 @@ export default {
     /*
       game inline functions
       */
-    // orient start: top-left 0
     getPosByCoord (x, y) {
       let info = PosInfo.board
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
@@ -908,6 +907,7 @@ export default {
         return [j, i]
       }
     },
+    // orient start: top-left 0
     getOrient (r1,c1, r2,c2) {
       if (r1===r2) {
         return c1<c2?2:5
