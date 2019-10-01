@@ -9,7 +9,7 @@ export class DamageDisplay {
         switch (type) {
             case 0: this.color = '255,0,0,';break;
             case 1: this.color = '0,0,255,';break;
-            case 2: this.color = '100,100,100,';break;
+            case 2: this.color = '200,200,200,';break;
         }
         this.now = 0
         this.len = 50
@@ -22,7 +22,6 @@ export class DamageDisplay {
         let bias = i % 2 == 1 ? bias = ratio*w1/2 : -ratio*w1/2
         this.cenT = bh/2+bMarTop+(i-2.5)*1.5*w1
         this.cenL = this.vm.w/2+(j-3)*ratio*2*w1+bias
-        console.log(this.cenL, this.cenT)
     }
     draw (ctx) {
         this.now ++

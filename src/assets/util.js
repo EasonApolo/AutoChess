@@ -42,7 +42,7 @@ export class util_attack extends util_tgt {
       this.damage = src.ad
     }
     this.sp = src.util.sp
-    this.vm.dealBuff('util_type')
+    this.vm.dealBuff('util_type', this.src)
     this.type = 0
   }
   draw (ctx, xbase, ybase) {
@@ -392,6 +392,7 @@ export class util_varus_arrow extends util_area{
     this.post = 60
     this.base = [300, 550, 800]
     this.damage = this.base[this.src.lvl]
+    this.type = 2
     this.w = 20
     this.been = []
   }
@@ -402,14 +403,15 @@ export class util_varus_arrow extends util_area{
       this.x = this.x0 + this.rate * this.d_x
       this.y = this.y0 + this.rate * this.d_y
       if (this.now % 2 === 0) {
-        let pos = this.vm.getPosByCoord(this.x, this.y)
+        let pos = this.vm.getPosByCoord(this.x+this.vm.xbase, this.y+this.vm.ybase)
         if (!pos) return  // out of board
-        if (this.been.findIndex(v=>v===pos) < 0) {
-          this.vm.damage(this, this.vm.board.grid[pos[0]][pos[1]])
+        let tgt = this.vm.board.grid[pos[0]][pos[1]]
+        if (tgt && this.been.findIndex(v=>this.vm.samePos(v,pos)) < 0) {
+          this.vm.damage(this, tgt)
           this.been.push(pos)
         }
       }
-      if (this.now === this.pre) {
+      if (this.now >= this.pre) {
         this.status = {done: true}
         this.now = 0
       }
@@ -423,12 +425,12 @@ export class util_varus_arrow extends util_area{
   draw (ctx, xbase, ybase) {
     let end_x = this.x-this.d_x*0.1
     let end_y = this.y-this.d_y*0.1
-    let grd = ctx.createLinearGradient(this.x, this.y)
+    let grd = ctx.createLinearGradient(this.x+xbase, this.y+xbase, end_x+xbase, end_y+xbase)
     grd.addColorStop(0, 'black')
     grd.addColorStop(1, 'white')
     ctx.strokeStyle = grd
     if (this.status.prepare) {
-      ctx.lineWidth = 3
+      ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(this.x+xbase, this.y+ybase)
       ctx.lineTo(end_x+xbase, end_y+ybase)

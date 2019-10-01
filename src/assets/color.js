@@ -10,4 +10,5 @@ export default {
     chessHpOppo: 'red',
     chessMp: 'blue',
     chessSp: '#ccc',
+    chessShield: '#bbb'
 }

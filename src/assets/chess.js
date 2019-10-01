@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -21,12 +21,12 @@ export class buff_regainMana extends buff {
         let val = args[0]
         let util = args[1]
         let regain = val * 0.1
-        this.src._mp += regain
+        this.src.mp_ += regain
       } else if (type === 'atk') {
-        this.src._mp += randInt(5, 6)
+        this.src.mp_ += randInt(5, 6)
       }
       // prevent overflow
-      if (this.src._mp >= this.src.mp) this.src._mp = this.src.mp
+      if (this.src.mp_ >= this.src.mp) this.src.mp_ = this.src.mp
     }
   }
 }
@@ -151,7 +151,7 @@ export class buff_kassadin_netherblade extends buff {
       let tgt_mp = this.src.status.target.mp_
       if (tgt_mp) {
         this.src.status.target.mp_ = tgt_mp > this.val ? tgt_mp - this.val : 0
-        this.buff.push(new buff_shield(this.vm, this.src, this.val, this.shield_duration))
+        this.src.buff.push(new buff_shield(this.vm, this.src, this.val, this.shield_duration))
       }
     }
   }
@@ -170,12 +170,13 @@ export class buff_shield extends buff {
       let [damage, util] = args
       if (this.type === 1 && util.type !== 1) return
       if (damage < this.val) {
-        damage = 0
         this.val -= damage
+        damage = 0
       } else {
         damage -= this.val
         removeFromArr(this.src.buff, this)
       }
+      return damage
     }
   }
   draw () {
@@ -200,7 +201,7 @@ export class buff_vayne_silverbolts extends buff {
         }
       }
       if (!flag) {
-        buff.push(new buff_vayne_silverbolts_target())
+        buff.push(new buff_vayne_silverbolts_target(this.vm, this.src, this.src.status.target))
       }
     }
   }
@@ -226,17 +227,17 @@ export class buff_vayne_silverbolts_target extends buff {
   get damage () {
     return this.tgt.hp * this.rate
   }
-  set damage () {}
+  set damage (dmg) {}
   draw (ctx, cenL, cenT) {
     ctx.lineWidth = 5
-    ctx.fillStyle = '#cccccc'
+    ctx.strokeStyle = '#cccccc'
     let r = 6*(this.stage+1)
     ctx.beginPath()
     if (this.stage > 0) {
-      ctx.arc(cenL, cenT, 80, 0, 2*Math.PI)
+      ctx.arc(cenL, cenT, 50, 0, 2*Math.PI)
     }
     if (this.stage > 1) {
-      ctx.arc(cenL, cenT, 90, 0, 2*Math.PI)
+      ctx.arc(cenL, cenT, 65, 0, 2*Math.PI)
     }
     ctx.stroke()
     ctx.lineWidth = 1
@@ -400,6 +401,15 @@ export class chess {
   }
   set mp_init (mp_init) {
     this._mp_init = mp_init
+  }
+  getShield () {
+    let shield = 0
+    for (let i in this.buff) {
+      if (this.buff[i] instanceof buff_shield) {
+        shield += this.buff[i].val
+      }
+    }
+    return shield
   }
 }
 
@@ -750,7 +760,7 @@ export default [
     }
   },
 
-  class Varus extends chess {
+  class Ashe extends chess {
     constructor (vm, lvl) {
       super(vm)
       this.id = 9,

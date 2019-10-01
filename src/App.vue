@@ -90,6 +90,8 @@ export default {
       ctx: undefined,
       w: 0,
       h: 0,
+      xbase: 0,
+      ybase: 0,
       mouse: {x:undefined, y:undefined},  // this coordinate is doubled
       game: {
         turn: 0,
@@ -266,6 +268,9 @@ export default {
     startGame () {
       this.w = document.documentElement.clientWidth*2
       this.h = document.documentElement.clientHeight*2
+      let info = PosInfo.board
+      this.xbase = this.w/2-6.5*info.ratio*info.w1,
+      this.ybase = info.marTop+info.h/2-3.75*info.w1,
       this.canvas = document.getElementById('canvas')
       this.ctx = this.canvas.getContext('2d')
       this.main()
@@ -462,7 +467,7 @@ export default {
       */
     sellHoldChess () {
       let lvl = this.hold.lvl
-      let cost = ChessInfo[this.hold.id].cost
+      let cost = CardInfo[this.hold.id].cost
       let price
       switch (lvl) {
         case 0: price = cost;break;
@@ -583,7 +588,7 @@ export default {
                   chess.status.attack = 0
                   this.dealBuff('atk', chess)
                   this.createUtilAttack(chess, chess.status.target)
-                  if (chess.mp_ >= chess.mp) {  // 攻击完成后才会施法
+                  if (chess.mp && chess.mp_ >= chess.mp) {  // 攻击完成后才会施法
                     this.castSpell(chess)
                   }
                 }
@@ -745,29 +750,28 @@ export default {
     mitigate (n) {
       return 100 / (n + 100)
     },
-    dealBuff (type, chess, args) {
-      let res = undefined
-      for (let i in chess.buff) {
-        res = chess.buff[i].response(type, ...args)
+    dealBuff (type, chess, ...args) {
+      if (type === 'dmg') {
+        for (let i in chess.buff) {
+          chess.buff[i].response(type, ...args)
+        }
+      } else if (type === 'atk') {
+        for (let i in chess.buff) {
+          chess.buff[i].response(type)
+        }
+      } else if (type === 's_dmg' || type === 'r_dmg') {
+        let [damage, util] = args
+        for (let i in chess.buff) {
+          let res = chess.buff[i].response(type, damage, util)
+          if (res!==undefined) damage = res
+        }
+        return damage
+      } else if (type === 'util_type') {
+        for (let i in chess.buff) {
+          let type = chess.buff[i].response(type)
+          if (type) return type
+        }
       }
-      return res
-      // if (type === 'dmg') {
-      //   let [chess, val, util] = args
-      //   for (let i in chess.buff) {
-      //     chess.buff[i].response(type, val, util)
-      //   }
-      // } else if (type === 'atk') {
-      //   let [chess] = args
-      //   for (let i in chess.buff) {
-      //     chess.buff[i].response(type)
-      //   }
-      // } else if (type === 's_dmg') {
-      //   let [chess, damage, util] = args
-      //   for (let i in chess.buff) {
-      //     damage = chess.buff[i].response(type, damage, util)
-      //   }
-      //   return damage
-      // }
     },
     checkRemain () {
       let grid = this.board.grid
@@ -1109,7 +1113,6 @@ export default {
               }
             }
           }
-          console.log(num, this.game.lvl)
           if (num >= this.game.lvl) return
         }
         let tmp = this.hold
@@ -1248,11 +1251,19 @@ export default {
             img.src = chess.src
             let imgW = chess.size * w2
             ctx.drawImage(img, cenL-imgW/2+biasX, cenT-imgW/2+biasY, imgW, imgW)
-            // hp mp
+            // hp
             ctx.fillStyle = chess.camp===0 ? ColorInfo.chessHp:ColorInfo.chessHpOppo
             ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.hpT+biasY, chess.hp_/chess.hp*info.hpW, info.hpH)
-            ctx.fillStyle = ColorInfo.chessMp
-            ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess.mp_/chess.mp*info.hpW, info.hpH)
+            // shield
+            let shield = chess.getShield()
+            if (shield) {
+              ctx.fillStyle = ColorInfo.chessShield
+              ctx.fillRect(cenL+info.hpW*(chess.hp_/chess.hp-1/2)+biasX, cenT-info.hpT+biasY, shield/chess.hp*info.hpW, info.hpH)
+            }
+            if (chess.mp) {
+              ctx.fillStyle = ColorInfo.chessMp
+              ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess.mp_/chess.mp*info.hpW, info.hpH)
+            }
             if (chess.status.spell) {
               ctx.fillStyle = ColorInfo.chessSp
               ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, chess.status.spell/chess.spell_pre*info.hpW, info.hpH)
