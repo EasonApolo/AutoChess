@@ -338,7 +338,6 @@ export class util_chogath_rupture extends util_area{
           for (let c in grids[r]) {
             if (grids[r][c] && grids[r][c].camp!=this.src.camp
               && this.vm.getDistance(...this.pos, r, c) <= this.radius) {
-                console.log(grids[r][c])
                 this.vm.stun(this, grids[r][c])
                 this.vm.damage(this, grids[r][c])
             }
@@ -470,7 +469,7 @@ export class util_ashe_arrow extends util_area{
     this.x = this.x0 + this.rate * this.d_x
     this.y = this.y0 + this.rate * this.d_y
     if (this.now % 2 === 0) {
-      let pos = this.vm.getPosByCoord(this.x, this.y)
+      let pos = this.vm.getPosByCoord(this.x+this.vm.xbase, this.y+this.vm.ybase)
       if (!pos) return  // out of board
       let tgt = this.vm.board.grid[pos[0]][pos[1]]
       if (tgt && tgt.camp !== this.src.camp) {
@@ -486,7 +485,7 @@ export class util_ashe_arrow extends util_area{
   draw (ctx, xbase, ybase) {
     let end_x = this.x-this.d_x*0.1
     let end_y = this.y-this.d_y*0.1
-    ctx.strokeStyle = 'rgb(150,150,255)'
+    ctx.strokeStyle = 'rgb(180,180,255)'
     if (this.status.prepare) {
       ctx.lineWidth = 20
       ctx.beginPath()

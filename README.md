@@ -27,17 +27,14 @@
 
 | version | bug描述 | 解决 |
 | ---- | ---- | ---- |
-| 0.0.25 | _hp是血量上限的设置值，hp_才是当前血量；而mp不需要设置值，同样mp_是当前血量 |  |
+| 0.0.27.1 | 合成时要保留装备 |  |
+|  | 战斗进行时应该禁止合成，在比赛开始阶段合成 |  |
 | 0.0.23 | 男枪的攻击需要修正 |  |
-|  | 技能伤害显示有误 | √ |
 | 0.0.21.12 | 格雷福斯伤害加成buff |  |
 |  | 不同小炮的攻击都会叠加炸弹 |  |
-|  | 有时伤害记录名字不对 |  |
 |  | endgame结算 |  |
+|  | 有时伤害记录名字不对 |  |
 |  | 有时候战斗时会卡住 |  |
-|  | 伤害记录每回合重置 | √ |
-|  | 一边start在pending，另一边end在pending导致卡住 | √ |
-|  | drawplayer名字重叠 | √ |
 | 0.0.21.7 | 奥巴马有时技能位移错误 |  |
 
 ## All
@@ -46,7 +43,7 @@
 | ---- | ---- | ---- | ---- |
 | Aatrox | √ | Ahri |  |
 | Akali |  | Anivia |  |
-| Ashe |  | Aurelion Sol |  |
+| Ashe | √ | Aurelion Sol |  |
 | Blitzcrank |  | Brand |  |
 | Braum |  | Chogath | √ |
 | Darius |  | Draven |  |
@@ -65,7 +62,7 @@
 | RekSai |  | Rengar |  |
 | Sejuani |  | Shen |  |
 | Shyvana |  | Swain |  |
-| Tristana | √ | Varus |  |
+| Tristana | √ | Varus | √ |
 | Vayne | √ | Veigar |  |
 | Volibear |  | Warwick |  |
 | Yasuo | √ | Zed |  |

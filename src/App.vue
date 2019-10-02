@@ -95,7 +95,7 @@ export default {
       mouse: {x:undefined, y:undefined},  // this coordinate is doubled
       game: {
         turn: 0,
-        gold: 0,
+        gold: 10,
         exp: 0,
         lvl: 1,
         costUpgrade: 4,
@@ -388,7 +388,7 @@ export default {
         let [j, i] = pos
         if (this.board.grid[j][i]) {
           this.showChess = this.board.grid[j][i]
-          this.showPos = [x/2+1+'px', y/2+1+'px']
+          this.showPos = [x/2+5+'px', y/2+5+'px']
           return
         }
       }
@@ -768,8 +768,8 @@ export default {
         return damage
       } else if (type === 'util_type') {
         for (let i in chess.buff) {
-          let type = chess.buff[i].response(type)
-          if (type) return type
+          let dmg_type = chess.buff[i].response(type)
+          if (dmg_type !== undefined) return dmg_type
         }
       }
     },
@@ -1148,7 +1148,7 @@ export default {
             let pos = count[i][j]
             let chess = j == 0 ? this.createChess(cardId, 0, i+1) : undefined
             if (pos.length === 2) {
-              grids[pos[0]][pos[1]] = chess
+              this.setChess(pos[0], pos[1], chess)
             } else {
               cards[pos] = chess
             }

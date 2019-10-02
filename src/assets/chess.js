@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -291,7 +291,7 @@ export class buff_class_void extends buff {
     super(vm, src)
     this.name = '虚空'
   }
-  response(type, ...args) {
+  response(type) {
     if (['util_type'].includes(type)) {
       return 2
     }
@@ -774,7 +774,7 @@ export default [
       this.size = this.size_base[this.lvl],
       this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
-      this.mp = 125,
+      this.mp = 25,
       this._as = 0.7,
       this.range = 4,
       this.sp = 60,
@@ -786,10 +786,26 @@ export default [
       this.util = {
         sp: 1000,
       }
-      this.spell_pre = 90
+      this.spell_pre = 20
       this.spell = function enchanted_crystal_arrow () {
         if (this.status.target) {
-          new util_varus_arrow(this.vm, this)
+          let grids = this.vm.board.grid
+          let maxPos = undefined
+          let maxDis = 0
+          for (let r in grids) {
+            for (let c in grids[r]) {
+              if (grids[r][c] && grids[r][c].camp !== this.src.camp) {
+                let dis = this.vm.getDistance(...this.pos, r, c)
+                if (dis > maxDis) {
+                  maxDis = dis
+                  maxPos = [r, c]
+                }
+              }
+            }
+          }
+          if (maxPos) {
+            new util_ashe_arrow(this.vm, this, maxPos)
+          }
           this.status.spell = undefined
           this.status.attack = 0
         }
