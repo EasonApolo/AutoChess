@@ -622,10 +622,8 @@ export default {
               }
             }
             else if (chess.status.spell >= 0) {
-              if (chess.status.spell < chess.spell_pre) {
-                chess.status.spell ++
-              } else {
-                chess.status.spell = undefined
+              chess.status.spell ++
+              if (chess.status.spell == chess.spell_pre){
                 chess.spell()
               }
             }
@@ -1265,8 +1263,9 @@ export default {
               ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.mpT+biasY, chess.mp_/chess.mp*info.hpW, info.hpH)
             }
             if (chess.status.spell) {
+              let rate = Math.min([chess.status.spell/chess.spell_pre, 1])
               ctx.fillStyle = ColorInfo.chessSp
-              ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, chess.status.spell/chess.spell_pre*info.hpW, info.hpH)
+              ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, rate*info.hpW, info.hpH)
             }
             if (chess.status.stun) {
               if (chess.status.stun.type===0) {

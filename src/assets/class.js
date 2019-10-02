@@ -14,6 +14,7 @@ export default [
   {name: "法师", stage: [3,6,9]}, //9
   {name: "游侠", stage: [2,4]}, //10
   {name: "极地", stage: [2,4,6]}, //11
+  {name: "骑士", stage: [2,4,6]}, //12
 ]
 
 export function set_buff_class_gun (vm, camp, stage) {
@@ -78,7 +79,7 @@ export function set_buff_class_exile (vm, camp, stage) {
       let chess = grids[r][c]
       if (chess && chess.cat.includes(4)) {
         let six = vm.getSixPos([r,c])
-        if (undefined === six.find(v => {grids[v[0]][v[1]] !== undefined})) {
+        if (undefined === six.find(v => grids[v[0]][v[1]] !== undefined && grids[v[0]][v[1]].camp === chess.camp)) {
           grids[r][c].buff.push(new buff_shield(vm, chess, chess.hp, 100*60))
         }
       }

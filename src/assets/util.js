@@ -333,6 +333,7 @@ export class util_chogath_rupture extends util_area{
       this.now++
       if (this.now === this.pre) {
         this.status = {done: true}
+        this.now = 0
         let grids = this.vm.board.grid
         for (let r in grids) {
           for (let c in grids[r]) {

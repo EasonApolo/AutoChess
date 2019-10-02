@@ -244,6 +244,47 @@ export class buff_vayne_silverbolts_target extends buff {
   }
 }
 
+
+export class buff_garen_judgement extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.base = [40, 65, 90]
+    this.damage = this.base[src.lvl]
+    this.type = 2
+    this.now = 0
+    this.w = 60
+  }
+  response () {
+  }
+  draw (ctx) {
+    if (this.now % 30 === 0) {
+      let six = this.vm.getSixPos(this.src.pos)
+      for (let i in six) {
+        let chess = this.vm.board.grid[six[i][0]][six[i][1]]
+        if (chess && chess.camp !== this.src.camp) {
+          console.log('1')
+          this.vm.damage(this, chess)
+        }
+      }
+    }
+    if (this.now === 240) {
+      removeFromArr(this.src.buff, this)
+      this.src.status.spell = undefined
+      this.src.status.attack = 0
+    }
+    let coord = this.vm.getCoord(...this.src.pos)
+    let x = coord[0]+this.vm.xbase, y = coord[1]+this.vm.ybase
+    let start = this.now/30*Math.PI*2
+    ctx.lineWidth = 50
+    ctx.strokeStyle = 'rgba(192, 255, 102, 0.8)'
+    ctx.beginPath()
+    ctx.arc(x, y, this.w, start, start+0.8*Math.PI)
+    ctx.stroke()
+    ctx.lineWidth = 1
+    this.now ++
+  }
+}
+
 export class buff_class_gun extends buff {
   constructor (vm, src, stage) {
     super(vm, src)
@@ -774,7 +815,7 @@ export default [
       this.size = this.size_base[this.lvl],
       this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
-      this.mp = 25,
+      this.mp = 125,
       this._as = 0.7,
       this.range = 4,
       this.sp = 60,
@@ -809,6 +850,39 @@ export default [
           this.status.spell = undefined
           this.status.attack = 0
         }
+      }
+    }
+  },
+
+  class Garen extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 10,
+      this._name = '德玛西亚之力',
+      this.src = 'Garen.png',
+      this.cat = [2, 12],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [600, 1080, 2160]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 100,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 40,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 1
+      this.spell = function judgement () {
+        this.buff.push(new buff_garen_judgement(this.vm, this))
       }
     }
   }

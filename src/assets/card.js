@@ -58,6 +58,12 @@ export default [
         "name": "寒冰射手",
         "cost": 3,
         "cat": [10, 11]
+    },
+    {
+        "id": 10,
+        "name": "德玛西亚之力",
+        "cost": 1,
+        "cat": [2, 12]
     }
 ]
 
