@@ -71,7 +71,7 @@
 | Shyvana |  | Swain |  |
 | Tristana | √ | Varus | √ |
 | Vayne | √ | Veigar |  |
-| Volibear |  | Warwick |  |
+| Volibear | √ | Warwick |  |
 | Yasuo | √ | Zed |  |
 | Twisted Fate |  | Camille |  |
 | Jayce |  | Jinx |  |
@@ -89,7 +89,7 @@
 | Assasin |  | Blademaster |  |
 | Brawler |  | Elementalist |  |
 | Guardian |  | Gunslinger | √ |
-| Knight |  | Ranger |  |
+| Knight |  | Ranger | √ |
 | Shapeshifter |  | Sorcerer |  |
 
 | 事项 | 完成 | 事项 | 完成 |
