@@ -64,6 +64,12 @@ export default [
         "name": "德玛西亚之力",
         "cost": 1,
         "cat": [2, 12]
+    },
+    {
+        "id": 11,
+        "name": "雷霆咆哮",
+        "cost": 3,
+        "cat": [8, 11]
     }
 ]
 

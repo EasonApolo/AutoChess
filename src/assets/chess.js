@@ -262,7 +262,6 @@ export class buff_garen_judgement extends buff {
       for (let i in six) {
         let chess = this.vm.board.grid[six[i][0]][six[i][1]]
         if (chess && chess.camp !== this.src.camp) {
-          console.log('1')
           this.vm.damage(this, chess)
         }
       }
@@ -282,6 +281,62 @@ export class buff_garen_judgement extends buff {
     ctx.stroke()
     ctx.lineWidth = 1
     this.now ++
+  }
+}
+
+export class buff_volibear_thunderclaws extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.base_multiplier = [0.8, 0.9, 1]
+    this.base_bounces = [3,4,5]
+    this.bounces = this.base_bounces[src.lvl]
+    this.type = 2
+    this.now = 0
+    this.post = 20
+    this.w = 60
+    this.duration = 20*60
+  }
+  get damage () {
+    return this.src.ad*this.base_multiplier[this.src.lvl]
+  }
+  set damage (dmg) {}
+  response(type) {
+    if (type === 'atk') {
+      let grids = this.vm.board.grid
+      let poses = []
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          let chess = grids[r][c]
+          if (chess && chess.camp != this.src.camp) {
+            poses.push([r,c])
+          }
+        }
+      }
+      let tgts = []
+      for (let i=0; i<this.bounces; i++) {
+        if (poses.length === 0) break
+        let tgtInd = randInt(poses.length)
+        let tgtPos = poses.splice(tgtInd, 1)[0]
+        tgts.push(tgtPos)
+        this.vm.damage(this, grids[tgts[i][0]][tgts[i][1]])
+      }
+      this.tgts = tgts
+      this.now = 0
+    }
+  }
+  draw (ctx) {
+    if (this.duration--===0) removeFromArr(this.src.buff, this)
+    if (this.now < this.post) this.now++
+    ctx.lineWidth = 10
+    ctx.strokeStyle = `rgba(150,150,255,${1-this.now/this.post})`
+    ctx.beginPath()
+    ctx.moveTo(...this.vm.getBasedCoord(...this.src.pos))
+    for (let i in this.tgts) {
+      ctx.lineTo(...this.vm.getBasedCoord(...this.tgts[i]))
+    }
+    ctx.lineTo(...this.vm.getBasedCoord(...this.src.pos))
+    ctx.stroke()
+    ctx.lineWidth = 1
   }
 }
 
@@ -343,7 +398,7 @@ export class buff_class_noble extends buff {
   constructor (vm, src) {
     super(vm, src)
     this.name = '贵族'
-    this.heal = 30
+    this.val = 30
   }
   response(type, ...args) {
     if (['atk'].includes(type)) {
@@ -352,6 +407,45 @@ export class buff_class_noble extends buff {
   }
 }
 
+export class buff_class_ranger extends buff_val {
+  constructor (vm, src) {
+    super (vm, src, 'as', 0, 1, name='游侠')
+    this.base = [0.25, 0.7]
+    this.chance = this.base[src.lvl]
+    this.now = 0
+    this.tick = 3 *60
+    this.w = 40
+    this.len = 0.8*Math.PI
+    this.start = 0
+    this.deg = 1/360*2*Math.PI
+    this.sp = [1,2,4,8,16,32]
+  }
+  draw (ctx) {
+    this.now ++
+    if (this.now == this.tick) {
+      if (randInt(100)<this.chance*100) {
+        this.val = 1
+      } else {
+        this.val = 0
+      }
+      this.now = 0
+    }
+    if (this.val == 0) return
+    let [x, y] = this.vm.getCoord(...this.src.pos)
+    x += this.vm.xbase
+    y += this.vm.ybase
+    this.start += this.deg*this.sp[Math.floor(this.now/30)]
+    let start0 = this.start
+    let start1 = this.start+Math.PI
+    ctx.strokeStyle = 'rgba(193,241,15,0.9)'
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.arc(x, y, 30, start0, start0+this.len)
+    ctx.arc(x, y, 30, start1, start1+this.len)
+    ctx.stroke()
+    ctx.lineWidth = 1
+  }
+}
 
 export class chess {
   constructor (vm) {
@@ -883,6 +977,41 @@ export default [
       this.spell_pre = 1
       this.spell = function judgement () {
         this.buff.push(new buff_garen_judgement(this.vm, this))
+      }
+    }
+  },
+
+  class Volibear extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 11,
+      this._name = '雷霆咆哮',
+      this.src = 'Volibear.png',
+      this.cat = [8, 11],
+      this.lvl = lvl
+      this.size_base = [0.8, 0.9, 1]
+      this.hp_base = [750, 1350, 2700]
+      this.ad_base = [70, 126, 252]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 25,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 1
+      this.spell = function judgement () {
+        this.buff.push(new buff_volibear_thunderclaws(this.vm, this))
+        this.status.spell = undefined
+        this.status.attack = 0
       }
     }
   }

@@ -138,7 +138,7 @@ export default {
     this.initBoard()
   },
   mounted () {
-    this.fetchID = setInterval(this.fetchStatus, 3000)
+    this.fetchID = setInterval(this.fetchStatus, 500)
   },
   computed: {
     sortedRoomUsers () {
@@ -690,7 +690,7 @@ export default {
       }
     },
     heal (util, tgt) {
-      tgt.hp_ += this.val
+      tgt.hp_ += util.val
       if (tgt.hp_ > tgt.hp) tgt.hp_ = tgt.hp
     },
     damage (util, tgt=undefined) {
@@ -1022,6 +1022,11 @@ export default {
         sixPos.push([r,c])
       }
       return sixPos
+    },
+    getBasedCoord(r, c) {
+      let [x, y] = this.getCoord(r, c)
+      x += this.xbase, y += this.ybase
+      return [x, y]
     },
     getCoord (r, c) {
       [r, c] = numberize([r, c])
