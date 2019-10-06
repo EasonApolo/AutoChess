@@ -15,6 +15,9 @@ export default [
   {name: "游侠", stage: [2,4], buff: set_buff_class_ranger}, //10
   {name: "极地", stage: [2,4,6]}, //11
   {name: "骑士", stage: [2,4,6]}, //12
+  {name: "暗影", stage: [2]}, //13
+  {name: "狂野", stage: [2,4]}, //14
+  {name: "换形师", stage: [3,6]}, //15
 ]
 
 export function set_buff_class_gun (vm, camp, stage) {

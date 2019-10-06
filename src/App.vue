@@ -549,7 +549,16 @@ export default {
         for (let j in grid[i]) {
           if (grid[i][j] !== undefined) {
             let chess = grid[i][j]
-            if (chess.status.ready) {
+            if (chess.status.stun) {
+              let stun = chess.status.stun
+              if (stun.p<stun.pn) {
+                stun.p++
+              } else {
+                chess.status.stun = undefined
+                chess.status.ready = true
+              }
+            }
+            else if (chess.status.ready) {
               // res[0] nearest coordinate [r,c], undefined if no nearest
               // res[1] nearest distance, 100 if no nearest
               let res = this.findNearestOppo(chess, i, j)
@@ -627,15 +636,6 @@ export default {
                 chess.spell()
               }
             }
-            else if (chess.status.stun) {
-              let stun = chess.status.stun
-              if (stun.p<stun.pn) {
-                stun.p++
-              } else {
-                chess.status.stun = undefined
-                chess.status.ready = true
-              }
-            }
           }
         }
       }
@@ -663,6 +663,13 @@ export default {
           this.hold = undefined
         }
       }
+    },
+    moveChessOnce (chess, tgt) {
+      let src = chess.pos
+      let grids = this.board.grid
+      grids[src[0]][src[1]] = undefined
+      grids[tgt[0]][tgt[1]] = chess
+      chess.pos = tgt
     },
     // if chess cannot move, return false
     moveChess (chess, finalTarget) {
@@ -888,6 +895,16 @@ export default {
     /*
       game inline functions
       */
+    getFurthestGrid (r, c) {
+      let orient = this.getBackOrient(r, c)
+      let order = [0, -1, 1, -2, 2, -3]
+      for (let i=0; i<6; i++) {
+        let testOrient = (orient+6+order[i]) % 6
+        console.log(testOrient)
+        let tgt = this.getOrientGrid([r,c], testOrient)
+        if (tgt && this.board.grid[tgt[0]][tgt[1]] === undefined) return [tgt, (orient+3)%6]
+      }
+    },
     getPosByCoord (x, y) {
       let info = PosInfo.board
       if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
@@ -911,6 +928,7 @@ export default {
     },
     // orient start: top-left 0
     getOrient (r1,c1, r2,c2) {
+      [r1, c1, r2, c2] = numberize([r1, c1, r2, c2])
       if (r1===r2) {
         return c1<c2?2:5
       } else {
@@ -930,6 +948,7 @@ export default {
       }
     },
     getOrientGrid (now, orient) {
+      now = numberize(now)
       let pos = []
       let odd = now[0]%2
       if (orient < 2) {
@@ -1022,6 +1041,21 @@ export default {
         sixPos.push([r,c])
       }
       return sixPos
+    },
+    getBackOrient (r, c) {
+      [r, c] = numberize([r, c])
+      let orient = undefined
+      if (r <= 1) {
+        if (c <= 3) orient = 0
+        else orient = 1
+      } else if (r >= 2 && r <= 3) {
+        if (c <= 3) orient = 5
+        else orient = 2
+      } else if (r >= 4) {
+        if (c <= 3) orient = 4
+        else orient = 3
+      }
+      return orient
     },
     getBasedCoord(r, c) {
       let [x, y] = this.getCoord(r, c)

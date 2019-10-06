@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -252,7 +252,7 @@ export class buff_garen_judgement extends buff {
     this.damage = this.base[src.lvl]
     this.type = 2
     this.now = 0
-    this.w = 60
+    this.w = 100
   }
   response () {
   }
@@ -274,8 +274,8 @@ export class buff_garen_judgement extends buff {
     let coord = this.vm.getCoord(...this.src.pos)
     let x = coord[0]+this.vm.xbase, y = coord[1]+this.vm.ybase
     let start = this.now/30*Math.PI*2
-    ctx.lineWidth = 50
-    ctx.strokeStyle = 'rgba(192, 255, 102, 0.8)'
+    ctx.lineWidth = 100
+    ctx.strokeStyle = 'rgba(192, 255, 102, 0.7)'
     ctx.beginPath()
     ctx.arc(x, y, this.w, start, start+0.8*Math.PI)
     ctx.stroke()
@@ -337,6 +337,50 @@ export class buff_volibear_thunderclaws extends buff {
     ctx.lineTo(...this.vm.getBasedCoord(...this.src.pos))
     ctx.stroke()
     ctx.lineWidth = 1
+  }
+}
+
+export class buff_gnar_gnaaaaar extends buff {
+  constructor (vm, src, orient) {
+    super(vm, src)
+    this.orient = orient
+  }
+  response (type) {
+    if (type === 'atk') {
+      let orient = this.orient
+      let grids = this.vm.board.grid
+      let threeOrients = [orient, (orient+6-1) % 6, (orient+6+1) % 6]
+      console.log(threeOrients)
+      let d = [[], []]
+      for (let i in threeOrients) {
+        d[0].push(this.vm.getOrientGrid(this.src.pos, threeOrients[i]))
+      }
+      for (let i in threeOrients) {
+        d[1].push(this.vm.getOrientGrid(d[0][0], threeOrients[i]))
+      }
+      for (let i = 1; i>0; i--) {
+        for (let j = 0; j<3; j++) {
+          let pos = d[i][j]
+          let chess = grids[pos[0]][pos[1]]
+          if (chess && chess.camp !== this.src.camp) {
+            let p1 = this.vm.getOrientGrid(pos, orient)
+            for (let k in threeOrients) {
+              let tgt = this.vm.getOrientGrid(p1, threeOrients[k])
+              if (tgt && grids[tgt[0]][tgt[1]] === undefined) {
+                this.vm.moveChessOnce(chess, tgt)
+                break
+              }
+            }
+            if (grids[pos[0]][pos[1]]) {
+              if (grids[p1[0]][p1[1]] === undefined) {
+                this.vm.moveChessOnce(chess, p1)
+              }
+            }
+          }
+        }
+      }
+      removeFromArr(this.src.buff, this)
+    }
   }
 }
 
@@ -559,7 +603,7 @@ export default [
       this.src = 'Tristana_d.png',
       this.cat = [0, 1],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [500, 900, 1800]
       this.ad_base = [50, 90, 180]
       this.size = this.size_base[this.lvl],
@@ -598,7 +642,7 @@ export default [
       this.src = 'Lucian_d.png',
       this.cat = [0, 2],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [600, 1080, 2160]
       this.ad_base = [65, 117, 234]
       this.size = this.size_base[this.lvl],
@@ -649,7 +693,7 @@ export default [
       this.src = 'Yasuo_d.png',
       this.cat = [3, 4],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [750, 1350, 2700]
       this.ad_base = [75, 135, 270]
       this.size = this.size_base[this.lvl],
@@ -703,7 +747,7 @@ export default [
       this.src = 'Graves_d.png',
       this.cat = [0, 5],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [450, 810, 1620]
       this.ad_base = [55, 99, 198]
       this.size = this.size_base[this.lvl],
@@ -733,7 +777,7 @@ export default [
       this.src = 'Aatrox.png',
       this.cat = [3, 6],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [450, 810, 1620]
       this.ad_base = [55, 99, 198]
       this.size = this.size_base[this.lvl],
@@ -770,7 +814,7 @@ export default [
       this.src = 'Chogath.png',
       this.cat = [7, 8],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [1000, 1800, 3600]
       this.ad_base = [70, 126, 252]
       this.size = this.size_base[this.lvl],
@@ -808,7 +852,7 @@ export default [
       this.src = 'Kassadin.png',
       this.cat = [7, 9],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [550, 990, 1980]
       this.ad_base = [40, 72, 144]
       this.size = this.size_base[this.lvl],
@@ -837,7 +881,7 @@ export default [
       this.src = 'Vayne.png',
       this.cat = [2, 10],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [550, 990, 1980]
       this.ad_base = [40, 72, 144]
       this.size = this.size_base[this.lvl],
@@ -866,7 +910,7 @@ export default [
       this.src = 'Varus.png',
       this.cat = [6, 10],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [500, 900, 1800]
       this.ad_base = [50, 90, 180]
       this.size = this.size_base[this.lvl],
@@ -903,7 +947,7 @@ export default [
       this.src = 'Ashe.png',
       this.cat = [10, 11],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [550, 990, 1980]
       this.ad_base = [65, 117, 234]
       this.size = this.size_base[this.lvl],
@@ -956,7 +1000,7 @@ export default [
       this.src = 'Garen.png',
       this.cat = [2, 12],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [600, 1080, 2160]
       this.ad_base = [50, 90, 180]
       this.size = this.size_base[this.lvl],
@@ -989,13 +1033,13 @@ export default [
       this.src = 'Volibear.png',
       this.cat = [8, 11],
       this.lvl = lvl
-      this.size_base = [0.8, 0.9, 1]
+      this.size_base = [0.65, 0.8, 0.95]
       this.hp_base = [750, 1350, 2700]
       this.ad_base = [70, 126, 252]
       this.size = this.size_base[this.lvl],
       this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
-      this.mp = 25,
+      this.mp = 75,
       this._as = 0.6,
       this.range = 1,
       this.sp = 60,
@@ -1012,6 +1056,107 @@ export default [
         this.buff.push(new buff_volibear_thunderclaws(this.vm, this))
         this.status.spell = undefined
         this.status.attack = 0
+      }
+    }
+  },
+
+  class Mordekaiser extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 12,
+      this._name = '铁铠冥魂',
+      this.src = 'Mordekaiser.png',
+      this.cat = [12, 13],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 70,
+      this._mp_init = 50
+      this._as = 0.5,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 40,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 30
+      this.spell = function obliterate () {
+        new util_mordekaiser_obliterate(this.vm, this)
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Gnar extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 13,
+      this._name = '迷失之牙',
+      this.src = 'Gnar.png',
+      this.cat = [1, 14, 15],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 15,
+      this._as = 0.7,
+      this.range = 2,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+      }
+      this.bonus_hp_base = [250, 450, 650]
+      this.bonus_hp = this.bonus_hp_base[this.lvl]
+      this.bonus_damage_base = [50, 100, 150]
+      this.bonus_damage = this.bonus_damage_base[this.lvl]
+      this.spell_damage_base = [200, 300, 400]
+      this.spell_damage = this.spell_damage_base[this.lvl]
+      this.spell_pre = 1
+      this.spell = function gnaaaaar () {
+        this.mp = undefined
+        this.range = 1
+        this.buff.push(new buff_val(this.vm, this, 'hp', this.bonus_hp, 0, '变形—血量'))
+        this.status.attack = undefined
+        this.status.spell = undefined
+        let grids = this.vm.board.grid
+        let d = 0
+        let pos = undefined
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            if (grids[r][c] && grids[r][c].camp !== this.camp) {
+              let d_ = this.vm.getDistance(...this.pos, r, c)
+              if (d_ > d) {
+                d = d_
+                pos = [r,c]
+              }
+            }
+          }
+        }
+        if (pos) {
+          let res = this.vm.getFurthestGrid(...pos)
+          if (res) {
+            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: res[0]}
+            this.buff.push(new buff_gnar_gnaaaaar(this.vm, this, res[1]))
+          }
+        }
       }
     }
   }

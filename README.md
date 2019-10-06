@@ -31,7 +31,7 @@
 |  | 战斗开始加羁绊buff时，似乎此时敌方棋子已经出现，所以务必要区分敌我，敌方棋子没有加buff |  |
 |  | 战斗进行时应该禁止合成，在比赛开始阶段合成 |  |
 |  | xbase现在是全局变量，绘图是xbase+getcoord，以前的可以替换 | 更换了getBaseCoord，以前的可以更换 |
-|  | 买棋子合成的时候会有棋子留在手上 |  |
+|  | 买棋子合成的时候会有棋子留在手上 | 是小屏幕时，商店和手牌重合导致的 |
 |  | 买棋子合成的时候要保留装备，多的丢在物品栏里 |  |
 |  | 有时棋子会莫名其妙被判定死亡（消失，不能攻击，位置不变，但别人依然会凭空攻击它） |  |
 |  | 新一回合开始时可能会少几个棋子，也许是刷新棋子的时候受到了伤害？ |  |
@@ -63,7 +63,7 @@
 | Khazix |  | Kindred |  |
 | Leona |  | Lissandra |  |
 | Lucian | √ | Lulu |  |
-| Miss Fortune |  | Mordekaiser |  |
+| Miss Fortune |  | Mordekaiser | √ |
 | Morgana |  | Nidalee |  |
 | Poppy |  | Pyke |  |
 | RekSai |  | Rengar |  |

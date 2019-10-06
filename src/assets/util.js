@@ -179,7 +179,6 @@ export class util_yasuo_tornado extends util_area{
       for (let r in grids) {
         for (let c in grids[r]) {
           if (grids[r][c] !== undefined && grids[r][c].camp !== this.src.camp && this.been.indexOf(grids[r][c]) < 0) {
-            // console.log(grids[r][c], this.been, this.been.indexOf(grids[r][c]))
             if (this.vm.getEuclid(...this.pos, ...this.vm.getCoord(r,c)) < (66 + this.w)) {
               this.vm.damage(this, grids[r][c])
               if (grids[r][c]) {
@@ -495,5 +494,54 @@ export class util_ashe_arrow extends util_area{
       ctx.stroke()
       ctx.lineWidth = 1
     }
+  }
+}
+
+export class util_mordekaiser_obliterate extends util_area{
+  constructor (vm, src) {
+    super(vm, src)
+    this.base = [250, 500, 750]
+    this.damage = this.base[this.src.lvl]
+    this.type = 1
+    this.orient = this.vm.getOrient(...src.pos, ...src.status.target.pos)
+    let p1 = this.vm.getOrientGrid(src.pos, this.orient)
+    if (p1) {
+      let c = this.vm.board.grid[p1[0]][p1[1]]
+      if (c && c.camp != this.src.camp) {
+        this.vm.damage(this, c)
+      }
+      let p2 = this.vm.getOrientGrid(p1, this.orient)
+      if (p2) {
+        let c = this.vm.board.grid[p2[0]][p2[1]]
+        if (c && c.camp != this.src.camp) {
+          this.vm.damage(this, c)
+        }
+      }
+    }
+    this.start = this.vm.getBasedCoord(...this.src.pos)
+    let w = PosInfo.board.w1*PosInfo.board.ratio
+    let l = w*5
+    let rad = (2-this.orient)*Math.PI/3
+    let cos = Math.cos(rad)
+    let sin = Math.sin(rad)
+    let dx = l*cos
+    let dy = -l*sin
+    this.end = [this.start[0]+dx, this.start[1]+dy]
+    this.now = 0
+    this.post = 60
+  }
+  act () {}
+  draw (ctx) {
+    this.now++
+    if (this.now === this.post) {
+      removeFromArr(this.vm.util, this)
+    }
+    ctx.lineWidth = 120
+    ctx.strokeStyle = `rgba(230, 230, 230, ${1-this.now/this.post})`
+    ctx.beginPath()
+    ctx.moveTo(this.start[0], this.start[1])
+    ctx.lineTo(this.end[0], this.end[1])
+    ctx.stroke()
+    ctx.lineWidth = 1
   }
 }
