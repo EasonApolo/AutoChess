@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate, util_ahri_orb, util_khazix_tastetheirfear } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -96,11 +96,12 @@ export class buff_tristana_explosiveSpark extends buff {
 }
 // type: ad / hp / armor / mr / as
 export class buff_val extends buff {
-  constructor (vm, src, type, val, rate=0, name=undefined) {
+  constructor (vm, src, type, val, rate=0, name=undefined, duration=undefined) {
     super(vm, src)
     this.type = type
     this.val = val
     this.rate = rate
+    this.duration = duration
     if (name) {
       this.name = name
     }
@@ -108,6 +109,14 @@ export class buff_val extends buff {
   response (type) {
     if (type === this.type) {
       return [this.val, this.rate]
+    }
+  }
+  draw () {
+    if (this.duration) {
+      this.duration--
+      if (this.duration <= 0) {
+        removeFromArr(this.src.buff, this)
+      }
     }
   }
 }
@@ -344,13 +353,19 @@ export class buff_gnar_gnaaaaar extends buff {
   constructor (vm, src, orient) {
     super(vm, src)
     this.orient = orient
+    this.damage_base = [200, 300, 400]
+    this.damage = this.damage_base[this.src.lvl]
+    this.type = 1
+    this.stun = 2 * 60
+    this.stun_type = 0
+    this.done = false
   }
   response (type) {
-    if (type === 'atk') {
+    if (type === 'gnaaaaar_act') {
+      this.done = true
       let orient = this.orient
       let grids = this.vm.board.grid
       let threeOrients = [orient, (orient+6-1) % 6, (orient+6+1) % 6]
-      console.log(threeOrients)
       let d = [[], []]
       for (let i in threeOrients) {
         d[0].push(this.vm.getOrientGrid(this.src.pos, threeOrients[i]))
@@ -358,7 +373,7 @@ export class buff_gnar_gnaaaaar extends buff {
       for (let i in threeOrients) {
         d[1].push(this.vm.getOrientGrid(d[0][0], threeOrients[i]))
       }
-      for (let i = 1; i>0; i--) {
+      for (let i = 1; i>=0; i--) {
         for (let j = 0; j<3; j++) {
           let pos = d[i][j]
           let chess = grids[pos[0]][pos[1]]
@@ -376,11 +391,36 @@ export class buff_gnar_gnaaaaar extends buff {
                 this.vm.moveChessOnce(chess, p1)
               }
             }
+            this.vm.damage(this, chess)
+            this.vm.stun(this, chess)
           }
         }
       }
       removeFromArr(this.src.buff, this)
     }
+  }
+  draw () {
+    if (!this.src.status.jump && !this.done) {
+      this.response('gnaaaaar_act')
+    }
+  }
+}
+
+export class buff_nidalee_heal extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.ticks = 6*60
+    this.val_base = [150, 375, 600]
+    this.val = this.val_base[this.src.lvl]/this.ticks
+    this.now = 0
+    this.name = 'Nidalee_healing'
+  }
+  response (type) {
+  }
+  draw () {
+    this.now ++
+    if (this.now >= this.ticks) removeFromArr(this.src.buff, this)
+    this.vm.heal(this, this.src)
   }
 }
 
@@ -545,7 +585,9 @@ export class chess {
     this._ad = ad
   }
   get hp () {
-    return this.__checkBuff(this._hp, 'hp')
+    let h_p = this.__checkBuff(this._hp, 'hp')
+    if (this.hp_ > h_p) this.hp_ = h_p
+    return h_p
   }
   set hp (hp) {
     this._hp = hp
@@ -1110,7 +1152,7 @@ export default [
       this.size = this.size_base[this.lvl],
       this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
-      this.mp = 15,
+      this.mp = 100,
       this._as = 0.7,
       this.range = 2,
       this.sp = 60,
@@ -1127,8 +1169,6 @@ export default [
       this.bonus_hp = this.bonus_hp_base[this.lvl]
       this.bonus_damage_base = [50, 100, 150]
       this.bonus_damage = this.bonus_damage_base[this.lvl]
-      this.spell_damage_base = [200, 300, 400]
-      this.spell_damage = this.spell_damage_base[this.lvl]
       this.spell_pre = 1
       this.spell = function gnaaaaar () {
         this.mp = undefined
@@ -1157,6 +1197,199 @@ export default [
             this.buff.push(new buff_gnar_gnaaaaar(this.vm, this, res[1]))
           }
         }
+      }
+    }
+  },
+
+  class Ahri extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 14,
+      this._name = '九尾妖狐',
+      this.src = 'Ahri.png',
+      this.cat = [9, 14],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [450, 810, 1620]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 25,
+      this._as = 0.55,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+      }
+      this.spell_pre = 1
+      this.spell = function orb_of_deception () {
+        new util_ahri_orb(this.vm, this)
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Khazix extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 15,
+      this._name = '虚空掠夺者',
+      this.src = 'Khazix.png',
+      this.cat = [7, 16],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [55, 99, 198]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 65,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+      }
+      this.spell_pre = 1
+      this.spell = function test_their_fear () {
+        if (this.status.target) {
+          new util_khazix_tastetheirfear(this.vm, this, this.status.target)
+        }
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Lulu extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 16,
+      this._name = '仙灵女巫',
+      this.src = 'Lulu.png',
+      this.cat = [1, 9],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._as = 0.65,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        hp_base: [300, 400, 500]
+      }
+      this.val = this.util.hp_base[this.lvl]
+      this.type = 1
+      this.stun = 2 * 60
+      this.stun_type = 0
+      this.spell_pre = 1
+      this.spell = function wild_growth () {
+        let grids = this.vm.board.grid
+        let minPos = undefined
+        let min = 100000
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let chess = grids[r][c]
+            if (chess && chess.camp==this.camp && chess.hp_<min) {
+              minPos = [r,c]
+              min = chess.hp_
+            }
+          }
+        }
+        if (minPos) {
+          let tgt = grids[minPos[0]][minPos[1]]
+          this.buff.push(new buff_val(this.vm, this, 'hp', this.util.hp_base[this.lvl], 0, '狂野生长_血量', 6*60))
+          console.log(this.buff)
+          this.vm.heal(this, tgt)
+          let six = this.vm.getSixPos(minPos)
+          for (let i in six) {
+            let chess = grids[six[i][0]][six[i][1]]
+            if (chess && chess.camp != this.camp) {
+              this.vm.stun(this, chess)
+            }
+          }
+        }
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Nidalee extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 17,
+      this._name = '狂野女猎手',
+      this.src = 'Nidalee.png',
+      this.cat = [14, 15],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 15,
+      this._as = 0.6,
+      this.range = 2,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        damage_base: [20, 70, 120]
+      }
+      this.spell_pre = 30
+      this.spell = function wild_growth () {
+        let grids = this.vm.board.grid
+        let minChess = undefined
+        let min = 100000
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let chess = grids[r][c]
+            if (chess && chess.camp==this.camp && chess !== this && chess.hp_<min) {
+              minChess = chess
+              min = chess.hp_
+            }
+          }
+        }
+        this.range = 1
+        this.mp = undefined
+        this.buff.push(new buff_val(this.vm, this, 'ad', this.util.damage_base[this.lvl], 0))
+        this.buff.push(new buff_nidalee_heal(this.vm, this))
+        console.log(minChess)
+        if (minChess) {
+          minChess.buff.push(new buff_nidalee_heal(this.vm, minChess))
+        }
+        this.status.spell = undefined
+        this.status.attack = 0
       }
     }
   }

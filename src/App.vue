@@ -42,6 +42,8 @@
       <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
         {{showChess.name}}
         <div class='attr'>
+          <div>hp:</div><div>{{(showChess.hp_||0).toFixed(0)}}/{{showChess.hp.toFixed(0)}}</div>
+          <div>mp:</div><div><span v-if='showChess.mp'>{{(showChess.mp_||0).toFixed(0)}}/{{showChess.mp.toFixed(0)}}</span></div>
           <div>ad:</div><div>{{showChess.ad.toFixed(0)}}</div>
           <div>as:</div><div>{{showChess.as.toFixed(2)}}</div>
           <div>range:</div><div>{{showChess.range.toFixed(0)}}</div>
@@ -555,7 +557,6 @@ export default {
                 stun.p++
               } else {
                 chess.status.stun = undefined
-                chess.status.ready = true
               }
             }
             else if (chess.status.ready) {
@@ -734,9 +735,6 @@ export default {
       // if still no tgt (tgt already dead or something)
       if (!tgt) return
       // stunning shouldn't stop jump
-      tgt.status.attack = undefined
-      tgt.status.spell = undefined
-      tgt.status.ready = undefined
       tgt.status.stun = {type:util.stun_type,p:0,pn:util.stun}
     },
     addDamageToRecord (util, damage) {
@@ -1248,7 +1246,7 @@ export default {
       const w1 = info.w1
       const w2 = info.w2
       const ratio = info.ratio
-      ctx.fillStyle = ColorInfo.section
+      ctx.fillStyle = ColorInfo.board
       ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
       for (let i in grid) {
         let bias = i % 2 == 1 ? bias = ratio*w1/2 : -ratio*w1/2

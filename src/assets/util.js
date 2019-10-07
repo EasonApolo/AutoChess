@@ -545,3 +545,95 @@ export class util_mordekaiser_obliterate extends util_area{
     ctx.lineWidth = 1
   }
 }
+
+export class util_ahri_orb extends util_area {
+  constructor (vm, src) {
+    super(vm, src)
+    this.base = [100, 200, 300]
+    this.damage = this.base[this.src.lvl]
+    this.type = 1
+    if (this.src.status.target) {
+      let tgtCoord = this.vm.getCoord(...this.src.status.target.pos)
+      let srcCoord = this.vm.getCoord(...this.src.pos)
+      let dx_ = tgtCoord[0]-srcCoord[0]
+      let dy_ = tgtCoord[1]-srcCoord[1]
+      let w = PosInfo.board.w1*PosInfo.board.ratio
+      let l = w*5
+      let d_ = Math.sqrt(dx_*dx_+dy_*dy_)
+      this.dx = l/d_*dx_    // transition distance
+      this.dy = l/d_*dy_
+      this.start = srcCoord // start position
+    }
+    this.x = this.start[0]  // current position
+    this.y = this.start[1]
+    this.been = []
+    this.now = 0
+    this.pre = 45
+    this.post = 45
+    this.w = 30
+  }
+  act () {
+    this.now++
+    if (this.status.prepare) {
+      if (this.now === this.pre) {
+        this.now = 0
+        this.been = []
+        this.status = {done:true}
+      }
+      this.x = this.start[0] + this.now / this.pre * this.dx
+      this.y = this.start[1] + this.now / this.pre * this.dy
+    } else if (this.status.done) {
+      if (this.now === this.post) {
+        removeFromArr(this.vm.util, this)
+      }
+      this.x = this.start[0] + (this.post-this.now) / this.post * this.dx
+      this.y = this.start[1] + (this.post-this.now) / this.post * this.dy
+    }
+    if (this.now %2 === 0) {
+      let pos = this.vm.getPosByCoord(this.x+this.vm.xbase, this.y+this.vm.ybase)
+      let chess = this.vm.board.grid[pos[0]][pos[1]]
+      if (chess && chess.camp != this.src.camp && this.been.find(v => this.vm.samePos(v, pos))===undefined) {
+        this.vm.damage(this, chess)
+        this.been.push(pos)
+      }
+    }
+  }
+  draw (ctx, xbase, ybase) {
+    ctx.fillStyle = `#8495da`
+    ctx.beginPath()
+    ctx.arc(this.x+xbase, this.y+ybase, this.w, 0, Math.PI*2)
+    ctx.fill()
+  }
+}
+
+export class util_khazix_tastetheirfear extends util_tgt {
+  constructor (vm, src, tgt) {
+    super(vm, src, tgt)
+    this.sp = src.util.sp
+    this.size = src.util.sz
+    this.damage_base = [150, 250, 350]
+    this.isolation_base = [400,600,800]
+    this.type = 1
+  }
+  get damage () {
+    let six = this.vm.getSixPos(this.tgt.pos)
+    let isolation = true
+    for (let i in six) {
+      let chess = this.vm.board.grid[six[i][0]][six[i][1]]
+      if (chess && chess.camp != this.src.camp) {
+        isolation = false
+        break
+      }
+    }
+    let damage = this.damage_base[this.src.lvl]
+    if (isolation) damage += this.isolation_base[this.src.lvl]
+    return damage
+  }
+  set damage (dmg) {}
+  draw (ctx, xbase, ybase) {
+    ctx.fillStyle = 'white'
+    ctx.fillRect(xbase+this.coord[0]-this.size/2, ybase+this.coord[1]-this.size/2, this.size, this.size)
+    ctx.strokeStyle = 'black'
+    ctx.strokeRect(xbase+this.coord[0]-this.size/2, ybase+this.coord[1]-this.size/2, this.size, this.size)
+  }
+}

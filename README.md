@@ -48,7 +48,7 @@
 
 | 事项 | 完成 | 事项 | 完成 |
 | ---- | ---- | ---- | ---- |
-| Aatrox | √ | Ahri |  |
+| Aatrox | √ | Ahri | √ |
 | Akali |  | Anivia |  |
 | Ashe | √ | Aurelion Sol |  |
 | Blitzcrank |  | Brand |  |
@@ -56,15 +56,15 @@
 | Darius |  | Draven |  |
 | Elise |  | Evelynn |  |
 | Fiora |  | Gangplank |  |
-| Garen | √ | Gnar |  |
+| Garen | √ | Gnar | √ |
 | Graves | √ | Karthus |  |
 | Kassadin | √ | Katarina |  |
 | Kayle |  | Kennen |  |
-| Khazix |  | Kindred |  |
+| Khazix | √ | Kindred |  |
 | Leona |  | Lissandra |  |
-| Lucian | √ | Lulu |  |
+| Lucian | √ | Lulu | √ |
 | Miss Fortune |  | Mordekaiser | √ |
-| Morgana |  | Nidalee |  |
+| Morgana |  | Nidalee | √ |
 | Poppy |  | Pyke |  |
 | RekSai |  | Rengar |  |
 | Sejuani |  | Shen |  |
