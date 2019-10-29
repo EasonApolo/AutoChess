@@ -1,5 +1,5 @@
 import { removeFromArr, randInt } from "./helper";
-import { buff_tristana_explosiveSpark } from "./chess";
+import { buff_tristana_explosiveSpark, buff_val } from "./chess";
 import PosInfo from './position'
 
 export class util_tgt {
@@ -635,5 +635,44 @@ export class util_khazix_tastetheirfear extends util_tgt {
     ctx.fillRect(xbase+this.coord[0]-this.size/2, ybase+this.coord[1]-this.size/2, this.size, this.size)
     ctx.strokeStyle = 'black'
     ctx.strokeRect(xbase+this.coord[0]-this.size/2, ybase+this.coord[1]-this.size/2, this.size, this.size)
+  }
+}
+
+export class util_shen_spirits_refuge extends util_area {
+  constructor (vm, src, tgt) {
+    super(vm, src, tgt)
+    this.duration_base = [3,4,5]
+    this.duration = this.duration_base[this.src.lvl] * 60
+    this.now = 0
+    this.w = PosInfo.board.w1 * PosInfo.board.ratio * 2.5
+  }
+  act () {
+    if (this.now % 30 == 0) {
+      let six = this.vm.getSixPos(this.src.pos)
+      let grids = this.vm.grid
+      for (let i in six) {
+        let tgt = grids[six[i][0]][six[i][1]]
+        if (tgt != undefined && tgt.camp == this.src.camp) {
+          tgt.buff.push(new buff_val(this.vm, this.src, 'dodge', 0, 1, '灵魂庇护', 1*30))
+        }
+      }
+    }
+    this.now ++
+    if (this.now == this.duration) {
+      removeFromArr(this.vm.util, this)
+    }
+  }
+  draw (ctx) {
+    let x, y = this.vm.getBasedCoord(this.src.pos)
+    ctx.fillStyle = 'rgba(176, 208, 255, 0.5)'
+    ctx.beginPath()
+    ctx.arc(x, y, this.w, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(176, 208, 255, 0.9)'
+    ctx.beginPath()
+    ctx.lineWidth = '3px'
+    ctx.arc(x, y, this.w, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.lineWidth = '1px'
   }
 }

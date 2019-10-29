@@ -27,6 +27,12 @@
 
 | version | bug描述 | 解决 |
 | ---- | ---- | ---- |
+| 0.0.32 | 可能会和对面的棋子合成了（这也太尴尬了吧） |  |
+|  | 无敌（凯尔和剑姬） |  |
+|  | 无法攻击（冰女） |  |
+|  | 衍生生物（蜘蛛、元素使buff） |  |
+|  | 法强（法师、忍者buff） |  |
+|  | 跳到目标身旁（雷克赛、狮子狗、机器人、寡妇、派克、杰斯、vi、潘森、卡米尔、刺客buff） |  |
 | 0.0.27.1 | 合成时要保留装备 |  |
 |  | 战斗开始加羁绊buff时，似乎此时敌方棋子已经出现，所以务必要区分敌我，敌方棋子没有加buff |  |
 |  | 战斗进行时应该禁止合成，在比赛开始阶段合成 |  |
@@ -53,13 +59,13 @@
 | Ashe | √ | Aurelion Sol |  |
 | Blitzcrank |  | Brand |  |
 | Braum |  | Chogath | √ |
-| Darius |  | Draven |  |
+| Darius | √ | Draven | √ |
 | Elise |  | Evelynn |  |
 | Fiora |  | Gangplank |  |
 | Garen | √ | Gnar | √ |
 | Graves | √ | Karthus |  |
 | Kassadin | √ | Katarina |  |
-| Kayle |  | Kennen |  |
+| Kayle |  | Kennen | √ |
 | Khazix | √ | Kindred |  |
 | Leona |  | Lissandra |  |
 | Lucian | √ | Lulu | √ |
@@ -67,15 +73,16 @@
 | Morgana |  | Nidalee | √ |
 | Poppy |  | Pyke |  |
 | RekSai |  | Rengar |  |
-| Sejuani |  | Shen |  |
-| Shyvana |  | Swain |  |
+| Sejuani |  | Shen | √ |
+| Shyvana | √ | Swain |  |
 | Tristana | √ | Varus | √ |
 | Vayne | √ | Veigar |  |
-| Volibear | √ | Warwick |  |
+| Volibear | √ | Warwick | √ |
 | Yasuo | √ | Zed |  |
 | Twisted Fate |  | Camille |  |
 | Jayce |  | Jinx |  |
 | Vi |  | Pantheon |  |
+| Kaisa | √ |
 
 | 事项 | 完成 | 事项 | 完成 |
 | ---- | ---- | ---- | ---- |
@@ -87,7 +94,7 @@
 | Robot |  | Void | √ |
 | Wild |  | Yordle |  |
 | Assasin |  | Blademaster |  |
-| Brawler |  | Elementalist |  |
+| Brawler | √ | Elementalist |  |
 | Guardian |  | Gunslinger | √ |
 | Knight |  | Ranger | √ |
 | Shapeshifter |  | Sorcerer |  |

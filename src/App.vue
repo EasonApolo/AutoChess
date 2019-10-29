@@ -708,11 +708,15 @@ export default {
       let buff_type = this.dealBuff('util_type', util.src)
       if (buff_type) util.type = buff_type
       if (util.type === 0) {
+        if (this.dealBuff('dodge', tgt)) {
+          this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, 'miss'))
+          return
+        }
         damage = this.mitigate(tgt.armor) * damage
       } else if (util.type === 1) {
         damage = this.mitigate(tgt.mr) * damage
       }
-      // damage reduction
+      // other damage reduction
       this.dealBuff('r_dmg', tgt, damage, util)
       // damage value confirmed, add to display & record
       this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, damage))
@@ -773,6 +777,15 @@ export default {
         for (let i in chess.buff) {
           let dmg_type = chess.buff[i].response(type)
           if (dmg_type !== undefined) return dmg_type
+        }
+      } else if (type === 'dodge') {
+        if (chess.dodge == 0) {
+          return false
+        }
+        if (randInt(100) < chess.dodge * 100) {
+          return true
+        } else {
+          return false
         }
       }
     },
@@ -898,7 +911,6 @@ export default {
       let order = [0, -1, 1, -2, 2, -3]
       for (let i=0; i<6; i++) {
         let testOrient = (orient+6+order[i]) % 6
-        console.log(testOrient)
         let tgt = this.getOrientGrid([r,c], testOrient)
         if (tgt && this.board.grid[tgt[0]][tgt[1]] === undefined) return [tgt, (orient+3)%6]
       }
@@ -941,6 +953,26 @@ export default {
             return c1===c2?1:0
           } else {
             return c1===c2?3:4
+          }
+        }
+      }
+    },
+    getApproxOrient(r1, c1, r2, c2) {
+      [r1, c1, r2, c2] = numberize([r1, c1, r2, c2])
+      if (r1===r2) {
+        return c1<c2?2:5
+      } else {
+        if (r1%2==1) {
+          if (r2<r1) {
+            return c1<=c2?0:1
+          } else {
+            return c1>=c2?4:3
+          }
+        } else {
+          if (r2<r1) {
+            return c1>=c2?1:0
+          } else {
+            return c1<=c2?3:4
           }
         }
       }
@@ -1211,6 +1243,7 @@ export default {
       let obj = new ChessInfo[id](this, lvl)
       obj.hold = false         // init hold
       obj.pos = undefined
+      obj._dodge = 0
       obj.status = {}
       obj.camp = camp
       obj.equips = []

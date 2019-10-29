@@ -3,6 +3,7 @@ import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
 import { timingSafeEqual } from "crypto";
+import { stat } from "fs";
 
 export class buff {
   constructor (vm, src) {
@@ -120,6 +121,23 @@ export class buff_val extends buff {
     }
   }
 }
+export class buff_reAttack extends buff {
+  constructor (vm, src, times) {
+    super(vm, src)
+    this.times = times
+  }
+  response (type) {
+    if (['atk'].includes(type)) {
+      // multi-reattack buff will be consumed
+      let attackTime = 1/this.src.as*1000
+      this.src.status.attack = 0.9 * attackTime
+      this.times -= 1
+      if (this.times == 0) {
+        removeFromArr(this.src.buff, this)
+      }
+    }
+  }
+}
 
 export class buff_graves_buckshot extends buff {
   constructor (vm, src) {
@@ -163,6 +181,55 @@ export class buff_kassadin_netherblade extends buff {
         this.src.buff.push(new buff_shield(this.vm, this.src, this.val, this.shield_duration))
       }
     }
+  }
+}
+
+export class buff_kennen_slicingmaelstrom extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.name = '闪电风暴'
+    this.base = [40, 80, 120]
+    this.damage = this.base[src.lvl]
+    this.type = 1
+    this.now = 0
+    this.interval = 0.5*60
+    this.duration = 3 * 60
+    this.stun = 1.5*60
+    this.stun_type = 0
+    this.been = []
+    this.w = PosInfo.board.w1 * PosInfo.board.ratio * 5
+    this.opacity = 100
+  }
+  draw (ctx) {
+    if (this.now % this.interval == 0) {
+      this.opacity = 100
+      let grids = this.vm.board.grid
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          let tgt = grids[r][c]
+          if (tgt != undefined && tgt.camp != this.src.camp && this.vm.getDistance(r, c, ...this.src.pos) <= 2) {
+            this.vm.damage(this, tgt)
+            if (this.been.findIndex(v=>v===tgt) < 0) {
+              this.been.push(tgt)
+              this.vm.stun(this, tgt)
+            }
+          }
+        }
+      }
+    }
+    this.now ++
+    if (this.now == this.duration) {
+      removeFromArr(this.src.buff, this)
+    }
+    this.opacity -= 2
+    let coord = this.vm.getCoord(...this.src.pos)
+    let x = coord[0]+this.vm.xbase, y = coord[1]+this.vm.ybase
+    ctx.lineWidth = 20
+    ctx.strokeStyle = `rgba(192, 255, 102, ${this.opacity/100})`
+    ctx.beginPath()
+    ctx.arc(x, y, this.w, 0, 2*Math.PI)
+    ctx.stroke()
+    ctx.lineWidth = 1
   }
 }
 
@@ -531,6 +598,87 @@ export class buff_class_ranger extends buff_val {
   }
 }
 
+export class buff_darius_decimate extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.base = [150, 200, 250]
+    this.heal_base = [100, 150, 200]
+    this.damage = this.base[src.lvl]
+    this.type = 1
+    this.now = 0
+    this.w = 100
+    this.status = 0
+    this.p1 = 60
+    this.p2 = 30
+  }
+  response () {
+  }
+  draw (ctx) {
+    if (this.now % p0 === 0) {
+      let six = this.vm.getSixPos(this.src.pos)
+      let n = 0
+      for (let i in six) {
+        let chess = this.vm.board.grid[six[i][0]][six[i][1]]
+        if (chess && chess.camp !== this.src.camp) {
+          this.vm.damage(this, chess)
+          n++
+        }
+      }
+      this.val = n * this.heal_base[this.src.lvl]
+      this.vm.heal(this, this.src)
+      this.status = 1
+      this.now = 0
+    }
+    if (this.now == p1 && this.status == 1) {
+      removeFromArr(this.src.buff, this)
+      this.src.status.spell = undefined
+      this.src.status.attack = 0
+    }
+    let opacity = 0
+    if (this.status == 0) {
+      opacity = this.now / p0 * 0.2+0.2
+    } else {
+      opacity = this.now / p1 * -1+1
+    }
+    let x, y = this.vm.getBasedCoord(...this.src.pos)
+    ctx.lineWidth = 100
+    ctx.strokeStyle = `rgba(50, 50, 50, ${opacity}`
+    ctx.beginPath()
+    ctx.arc(x, y, 140, 0, Math.PI*2)
+    ctx.stroke()
+    ctx.lineWidth = 1
+    this.now ++
+  }
+}
+
+
+export class buff_shyvana_dragondescent extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+  }
+  response (type, args) {
+    if (['atk'].includes(type)) {
+      this.src.status.target.buff.push(new buff_shyvana_dragondescent_target(this.vm, this.src, this.src.status.target))
+    }
+  }
+}
+export class buff_shyvana_dragondescent_target extends buff {
+  constructor (vm, src, tgt) {
+    super(vm, src)
+    this.duration = 3*60
+    this.damage = [200, 300, 400][this.src.lvl] / (3*60)
+    this.tgt = tgt
+    this.type = 1
+  }
+  response (type, args) {
+  }
+  draw (ctx, cenL, cenT) {
+    this.now ++
+    this.vm.damage(this, this.tgt)
+  }
+}
+
+
 export class chess {
   constructor (vm) {
     this.vm = vm
@@ -631,6 +779,13 @@ export class chess {
       }
     }
     return shield
+  }
+  get dodge () {
+    let p = this.__checkBuff(this._dodge, 'dodge')
+    return Math.min(1, p)
+  }
+  set dodge (dodge) {
+    this._dodge = dodge
   }
 }
 
@@ -1323,7 +1478,6 @@ export default [
         if (minPos) {
           let tgt = grids[minPos[0]][minPos[1]]
           this.buff.push(new buff_val(this.vm, this, 'hp', this.util.hp_base[this.lvl], 0, '狂野生长_血量', 6*60))
-          console.log(this.buff)
           this.vm.heal(this, tgt)
           let six = this.vm.getSixPos(minPos)
           for (let i in six) {
@@ -1353,7 +1507,7 @@ export default [
       this.size = this.size_base[this.lvl],
       this._hp= this.hp_base[this.lvl],
       this._ad = this.ad_base[this.lvl],
-      this.mp = 15,
+      this.mp = 85,
       this._as = 0.6,
       this.range = 2,
       this.sp = 60,
@@ -1392,5 +1546,331 @@ export default [
         this.status.attack = 0
       }
     }
-  }
+  },
+
+  class Kaisa extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 18,
+      this._name = '虚空之女',
+      this.src = 'Kaisa.png',
+      this.cat = [7, 10, 16],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [55, 99, 198]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 125,
+      this._mp_init = 50,
+      this._as = 1.25,
+      this.range = 2,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+        spell_as_base: [0.5, 0.75, 1],
+        spell_shield_base: [400, 700, 1000]
+      }
+      this.spell_pre = 1
+      this.spell = function killer_instinct () {
+        let grids = this.vm.board.grid
+        let d = 0
+        let pos = undefined
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            if (grids[r][c] && grids[r][c].camp !== this.camp) {
+              let d_ = this.vm.getDistance(...this.pos, r, c)
+              if (d_ > d) {
+                d = d_
+                pos = [r,c]
+              }
+            }
+          }
+        }
+        if (pos) {
+          let res = this.vm.getFurthestGrid(...pos)
+          if (res) {
+            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: res[0]}
+            this.buff.push(new buff_val(this.vm, this, 'as', 0, this.util.spell_as_base[this.lvl], '猎手本能', 3*60))
+            this.buff.push(new buff_shield(this.vm, this, this.util.spell_shield_base[this.lvl], 3*60))
+          }
+        }
+        this.status.spell = undefined
+        this.status.attack = undefined
+      }
+    }
+  },
+
+  class Kennen extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 19,
+      this._name = '狂暴之心',
+      this.src = 'Kennen.png',
+      this.cat = [1, 17, 18],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 80,
+      this._mp_init = 50,
+      this._as = 0.65,
+      this.range = 2,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 30
+      this.spell = function slicing_maelstrom () {
+        this.buff.push(new buff_kennen_slicingmaelstrom(this.vm, this))
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Shen extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 20,
+      this._name = '暮光之眼',
+      this.src = 'Shen.png',
+      this.cat = [3, 17],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._mp_init = 100,
+      this._as = 0.7,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this._dodge = 0
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 30
+      this.spell = function spirits_refuge () {
+        new util_shen_spirits_refuge(this.vm, this.src, this.tgt, this.base[this.src.lvl])
+        this.status.spell = undefined
+        this.status.attack = 0
+      }
+    }
+  },
+
+  class Warwick extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 21,
+      this._name = '祖安怒兽',
+      this.src = 'Warwick.png',
+      this.cat = [8, 14],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._mp_init = 50,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+        stun: 1.5 * 60,
+        stun_type: 0,
+      }
+      this.spell_pre = 10
+      this.spell = function spirits_refuge () {
+        let grids = this.vm.grid
+        let minTgt = undefined
+        let minHp = 1000000
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt != undefined && tgt.camp != this.camp && tgt.hp_ < minHp) {
+              minHp = tgt.hp_
+              minTgt = tgt
+            }
+          }
+        }
+        if (minTgt) {
+          let avails = this.vm.getSixPos(minTgt)
+          if (avails) {
+            let tgt = avails[randInt(avails.length)]
+            this.status.attack = undefined
+            this.status.spell = undefined
+            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: tgt}
+            this.vm.stun(this.util, tgt)
+            this.buff.push(new buff_reAttack(this.vm, this, 3))
+          }
+        }
+      }
+    }
+  },
+
+  class Darius extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 22,
+      this._name = '诺克萨斯之手',
+      this.src = 'Darius.png',
+      this.cat = [12, 19],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [600, 1080, 2160]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 100,
+      this._as = 0.5,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 40,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 1
+      this.spell = function spirits_refuge () {
+        this.buff.push(new buff_garen_judgement(this.vm, this))
+      }
+    }
+  },
+
+  class Draven extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 23,
+      this._name = '荣耀行刑官',
+      this.src = 'Draven.png',
+      this.cat = [3, 19],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 50,
+      this._as = 0.75,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        damage_base: [1.5, 2, 2.5],
+        as_base: [0.3, 0.45, 0.6]
+      }
+      this.spell_pre = 0
+      this.stage = 0
+      this.spell = function spinning_axes () {
+        this.stage ++
+        this.buff.push(new buff_val(this.vm, this, 'ad', 0, this.util.damage_base[this.lvl]))
+        this.buff.push(new buff_val(this.vm, this, 'as', 0, this.util.as_base[this.lvl]))
+        if (this.stage == 2) {
+          this.spell = undefined
+          this.mp = undefined
+          this.attack = 0
+        }
+      }
+    }
+  },
+
+  class Shyvana extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 24,
+      this._name = '龙血武姬',
+      this.src = 'Shyvana.png',
+      this.cat = [15, 20],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 85,
+      this._as = 0.7,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+        bonus_ad_base: [100, 150, 200],
+      }
+      this.spell_pre = 0
+      this.spell = function dragondescent () {
+        this.mp = undefined
+        this.range = 3
+        this.buff.push(new buff_val(this.vm, this, 'ad', this.util.bonus_ad_base[this.lvl]))
+        this.buff.push(new buff_shyvana_dragondescent(this.vm, this))
+        if (this.status.target) {
+          let grids = this.vm.grid
+          let orient = getApproxOrient(...this.status.target.pos, ...this.pos)
+          let dis = this.vm.getDistance(...this.pos, ...this.status.target.pos)
+          let current = this.pos
+          for (let i = 0; i < this.range - dis; i++) {
+            let tgt = this.vm.getOrientGrid(this.pos, current)
+            if (tgt && grids[tgt[0]][tgt[1]] == undefined) {
+              current = tgt
+            } else {
+              break
+            }
+          }
+          if (current) {
+            this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: current}
+          }
+        }
+        else {
+          console.log('Shyvana_spellNoTarget')
+        }
+      }
+    }
+  },
 ]

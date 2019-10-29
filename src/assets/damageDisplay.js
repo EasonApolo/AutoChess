@@ -4,7 +4,9 @@ import PosInfo from './position'
 export class DamageDisplay {
     constructor (vm, type, pos, damage) {
         this.vm = vm
-        this.damage = damage.toFixed(0)
+        if (typeof damage == 'number') {
+            this.damage = damage.toFixed(0)
+        }
         this.coord = this.vm.getCoord(...pos)
         switch (type) {
             case 0: this.color = '255,0,0,';break;
