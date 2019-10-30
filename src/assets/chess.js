@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate, util_ahri_orb, util_khazix_tastetheirfear, util_veigar_primordial_burst } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate, util_ahri_orb, util_khazix_tastetheirfear, util_veigar_primordial_burst, util_brand_pyroclasm } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -675,6 +675,69 @@ export class buff_shyvana_dragondescent_target extends buff {
   draw (ctx, cenL, cenT) {
     this.now ++
     this.vm.damage(this, this.tgt)
+  }
+}
+
+export class buff_braum_unbreakable extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.reduction = [0.7, 0.8, 0.9][this.src.lvl]
+    this.now = 0
+    this.duration = 4*60
+    let orient = this.vm.getApproxOrient(...this.src.status.target.pos, ...this.src.pos)
+    if (orient == undefined) console.log(`Error: Braum spell undefined orient, target ${this.src.status.target.pos}`)
+    this.start = ((2 - orient)*2-1) * Math.PI/6
+    this.end = this.start + Math.PI / 3
+  }
+  response (type, damage, util) {
+    if (['r_dmg'].includes(type)) {
+      if (util.type == 0 || util.type == 1) {
+        return damage * this.reduction
+      }
+    }
+  }
+  draw (ctx) {
+    let x, y = this.vm.getBasedCoord(this.src.pos)
+    ctx.lineWidth = 20
+    ctx.strokeStyle = 'rgba(33, 200, 200, 0.7)'
+    ctx.arc(x, y, 80, this.start, this.end)
+    ctx.lineWidth = 1
+    if (this.now == this.duration) {
+      removeFromArr(this.src.buff, this)
+    }
+    this.now ++
+  }
+}
+
+export class buff_morgana_soulshackles extends buff {
+  constructor (vm, src, tgt) {
+    super(vm, src)
+    this.tgt = tgt
+    this.stun = [2, 4, 6][this.src.lvl]*this.src.lvl
+    this.stun_type = 1
+    this.now = 0
+    this.duration = 3*60
+  }
+  draw (ctx) {
+    if (this.now == this.duration) {
+      this.vm.stun(this, this.tgt)
+      removeFromArr(this.tgt.buff, this)
+    }
+    if (this.now % 10 === 0) {
+      if (this.vm.getDistance(...this.tgt.pos, ...this.src.pos) > 3) {
+        removeFromArr(this.tgt.buff, this)
+      }
+    }
+    let x1, y1 = this.vm.getBasedCoord(this.src.pos)
+    let x2, y2 = this.vm.getBasedCoord(this.tgt.pos)
+    ctx.lineWidth = 10
+    ctx.strokeStyle = 'rgba(99, 49, 200, 0.8)'
+    ctx.beginPath()
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x2, y2)
+    ctx.stroke()
+    ctx.lineWidth = 1
+    this.now ++
   }
 }
 
@@ -1946,6 +2009,233 @@ export default [
       this.spell_post = 150
       this.spell = function requiem () {
         new util_karthus_requiem(this.vm, this, tgt)
+      }
+    }
+  },
+
+  class Braum extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 27,
+      this._name = '弗雷尔卓德之心',
+      this.src = 'Braum.png',
+      this.cat = [11, 21],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [40, 72, 144]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 75,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 75,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 0
+      this.spell = function unbreakable () {
+        this.buff.push(new buff_braum_unbreakable(this.vm, this))
+      }
+    }
+  },
+
+  class Brand extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 28,
+      this._name = '复仇焰魂',
+      this.src = 'Brand.png',
+      this.cat = [6, 18],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [60, 108, 216]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._mp_init = 50
+      this._as = 0.6,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 15
+      this.spell = function pyroclasm () {
+        new util_brand_pyroclasm(this.vm, this, this.status.target)
+      }
+    }
+  },
+
+  class Poppy extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 29,
+      this._name = '圣锤之毅',
+      this.src = 'Poppy.png',
+      this.cat = [1, 12],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 75,
+      this._mp_init = 50
+      this._as = 0.5,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 40,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        damage: [300, 500, 700][this.lvl],
+        type: 1,
+        stun: [2,3,4][this.lvl]*60,
+        stun_type: 0
+      }
+      this.spell_pre = 45
+      this.spell = function pyroclasm () {
+        let grids = this.vm.grid
+        let avails = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt && tgt.camp != this.camp) {
+              avails.push({p:[r,c], d:this.vm.getDistance(r, c, ...this.pos)})
+            }
+          }
+        }
+        let sortedAvails = avails.sort((a,b) => a.d-b.d)
+        let selectedAvails = sortedAvails.splice(0, 3)
+        for (let i in selectedAvails) {
+          let pos = selectedAvails.p
+          let tgt = grids[pos[0]][pos[1]]
+          this.vm.stun(this.util, tgt)
+          this.vm.damage(this.util, tgt)
+        }
+      }
+    }
+  },
+
+  class Morgana extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 30,
+      this._name = '堕落天使',
+      this.src = 'Morgana.png',
+      this.cat = [6, 9],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._mp_init = 50
+      this._as = 0.6,
+      this.range = 2,
+      this.sp = 60,
+      this.armor = 30,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        damage: [300, 500, 700][this.lvl],
+        type: 1,
+      }
+      this.spell_pre = 15
+      this.spell = function pyroclasm () {
+        let grids = this.vm.grid
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt && tgt.camp != this.camp && this.vm.getDistance(r, c, ...this.pos) <= 3) {
+              this.vm.damage(this.util, tgt)
+              tgt.buff.push()
+            }
+          }
+        }
+      }
+    }
+  },
+
+  class Rengar extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 31,
+      this._name = '傲之追猎者',
+      this.src = 'Rengar.png',
+      this.cat = [14, 16],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [550, 990, 1980]
+      this.ad_base = [70, 126, 252]
+      this.size = this.size_base[this.lvl],
+      this._hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 75,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        ad_multiplier_base: [2.1, 3.2, 4.3],
+        as_multiplier_base: [0.3, 0.5, 0.7],
+        duration: 6*60
+      }
+      this.spell_pre = 15
+      this.spell = function pyroclasm () {
+        let grids = this.vm.grid
+        let avails = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt != undefined && tgt.camp != this.camp) {
+              avails.push([tgt, tgt.hp_])
+            }
+          }
+        }
+        let sortedAvails = avails.sort((a,b) => a[1]-b[1])
+        for (let i in sortedAvails) {
+          let six = this.vm.getSixPos(sortedAvails[i].pos)
+          for (let j in six) {
+            if (grids[six[j][0]][six[j][1]] == undefined) {
+              this.status.attack = undefined
+              this.status.spell = undefined
+              this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: six[j]}
+              this.buff.push(new buff_val(this.vm, this, 'ad', 0, this.util.ad_multiplier_base[this.lvl], '野蛮之击_攻击力', this.util.duration))
+              this.buff.push(new buff_val(this.vm, this, 'as', 0, this.util.as_multiplier_base[this.lvl], '野蛮之击_攻速', this.util.duration))
+              this.buff.push(new buff_val(this.vm, this, 'crit', 0, 0.25, '野蛮之击_暴击', this.util.duration))
+              break
+            }
+          }
+        }
       }
     }
   }

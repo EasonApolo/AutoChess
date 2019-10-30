@@ -707,7 +707,7 @@ export class util_veigar_primordial_burst extends util_tgt {
 
 export class util_karthus_requiem extends util_area {
   constructor (vm, src) {
-    super(vm, src, tgt)
+    super(vm, src)
     this.now = 0
     this.duration = this.src.spell_post
     this.post = 45
@@ -752,6 +752,44 @@ export class util_karthus_requiem extends util_area {
       let x, y = this.vm.getBasedCoord(pos)
       ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`
       ctx.fillRect(x-10, y+10, 20, -300)
+    }
+  }
+}
+
+
+export class util_brand_pyroclasm extends util_tgt {
+  constructor (vm, src, tgt) {
+    super(vm, src, tgt)
+    this.damage = [250, 450, 650][this.src.lvl]
+    this.type = 1
+    this.sp = src.util.sp
+    this.bounces = [4, 6, 20][this.src.lvl]
+  }
+  draw (ctx, xbase, ybase) {
+    ctx.fillStyle = '#f4a92c'
+    ctx.arc(xbase+this.coord[0], ybase+this.coord[1], 30, 0, Math.PI*2)
+  }
+  effect () {
+    this.vm.damage(this, this.tgt)
+    if (--this.bounces <= 0) {
+      removeFromArr(this.vm.util, this)
+    } else {
+      let grids = this.vm.grid
+      let avails = []
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          let tgt = grids[r][c]
+          if (tgt && tgt.camp != this.src.camp && this.vm.getDistance(r, c, this.tgt.pos) <= 3) {
+            avails.push(tgt)
+          }
+        }
+      }
+      if (avails.length > 0) {
+        this.tgt = avails[randInt(avails.length)]
+        this.status = {prepare:true}
+      } else {
+        removeFromArr(this.vm.util, this)
+      }
     }
   }
 }

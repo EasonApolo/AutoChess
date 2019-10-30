@@ -57,8 +57,8 @@
 | Aatrox | √ | Ahri | √ |
 | Akali |  | Anivia |  |
 | Ashe | √ | Aurelion Sol |  |
-| Blitzcrank |  | Brand |  |
-| Braum |  | Chogath | √ |
+| Blitzcrank |  | Brand | √ |
+| Braum | √ | Chogath | √ |
 | Darius | √ | Draven | √ |
 | Elise |  | Evelynn |  |
 | Fiora |  | Gangplank |  |

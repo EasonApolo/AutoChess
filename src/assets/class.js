@@ -23,6 +23,7 @@ export default [
   {name: "元素使", stage: [3]},   //18
   {name: "帝国", stage: [2,4]},   //19
   {name: "龙", stage: [2,4]},   //20
+  {name: "护卫", stage: [2]},   //21
 ]
 
 export function set_buff_class_gun (vm, camp, stage) {

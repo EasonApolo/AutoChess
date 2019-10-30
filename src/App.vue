@@ -708,9 +708,10 @@ export default {
     damage (util, tgt=undefined) {
       if (!tgt) tgt = util.tgt
       let damage = util.damage
-      // damage type
+      // buffed damage type
       let buff_type = this.dealBuff('util_type', util.src)
       if (buff_type) util.type = buff_type
+      // armor, mr, dodge
       if (util.type === 0) {
         if (this.dealBuff('dodge', tgt)) {
           this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, 'miss'))
@@ -721,7 +722,7 @@ export default {
         damage = this.mitigate(tgt.mr) * damage
       }
       // other damage reduction
-      this.dealBuff('r_dmg', tgt, damage, util)
+      damage = this.dealBuff('r_dmg', tgt, damage, util)
       // damage value confirmed, add to display & record
       this.game.damageDisplays.push(new DamageDisplay(this, util.type, tgt.pos, damage))
       this.addDamageToRecord(util, damage)
