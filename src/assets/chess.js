@@ -1,4 +1,4 @@
-import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate, util_ahri_orb, util_khazix_tastetheirfear } from "./util";
+import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util_yasuo_tornado, util_graves_buckshot, util_aatrox_blade, util_chogath_rupture, util_varus_arrow, util_ashe_arrow, util_mordekaiser_obliterate, util_ahri_orb, util_khazix_tastetheirfear, util_veigar_primordial_burst } from "./util";
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
@@ -1873,4 +1873,80 @@ export default [
       }
     }
   },
+  
+  class Veigar extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 25,
+      this._name = '邪恶小法师',
+      this.src = 'Veigar.png',
+      this.cat = [1, 9],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [500, 900, 1800]
+      this.ad_base = [45, 81, 162]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 75,
+      this._as = 0.55,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20,
+      }
+      this.spell_pre = 15
+      this.spell = function primordial_burst () {
+        if (this.status.target) {
+          new util_veigar_primordial_burst(this.vm, this, this.status.target)
+          this.status.spell = undefined
+          this.status.attack = 0
+        } else {
+          console.log('Veigar_spellNoTarget')
+        }
+      }
+    }
+  },
+
+  class Karthus extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 26,
+      this._name = '死亡颂唱者',
+      this.src = 'Karthus.png',
+      this.cat = [9, 13],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [850, 1530, 3060]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp= this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 125,
+      this._mp_init = 40,
+      this._as = 0.65,
+      this.range = 3,
+      this.sp = 60,
+      this.armor = 25,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+      ]
+      this.util = {
+        sp: 1000,
+        n_tgt: [5, 7, 9][this.lvl]
+      }
+      this.spell_pre = 0
+      this.spell_post = 150
+      this.spell = function requiem () {
+        new util_karthus_requiem(this.vm, this, tgt)
+      }
+    }
+  }
 ]

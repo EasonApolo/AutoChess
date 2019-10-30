@@ -632,10 +632,14 @@ export default {
               }
             }
             else if (chess.status.spell >= 0) {
-              chess.status.spell ++
               if (chess.status.spell == chess.spell_pre){
                 chess.spell()
               }
+              if (chess.spell_post && chess.status.spell == chess.spell_post) {
+                chess.status.spell = undefined
+                chess.status.attack = 0
+              }
+              chess.status.spell ++
             }
           }
         }
@@ -1334,6 +1338,9 @@ export default {
             }
             if (chess.status.spell) {
               let rate = Math.min([chess.status.spell/chess.spell_pre, 1])
+              if (chess.status.spell > chess.spell_pre && chess.spell_post) {
+                rate = (chess.status.spell - chess.spell_pre) / (chess.spell_post - chess.spell_pre)
+              }
               ctx.fillStyle = ColorInfo.chessSp
               ctx.fillRect(cenL-info.hpW/2+biasX, cenT-info.spT+biasY, rate*info.hpW, info.hpH)
             }

@@ -1,6 +1,7 @@
 import { removeFromArr, randInt } from "./helper";
 import { buff_tristana_explosiveSpark, buff_val } from "./chess";
 import PosInfo from './position'
+import { timingSafeEqual } from "crypto";
 
 export class util_tgt {
   constructor (vm, src, tgt) {
@@ -674,5 +675,83 @@ export class util_shen_spirits_refuge extends util_area {
     ctx.arc(x, y, this.w, 0, Math.PI * 2)
     ctx.stroke()
     ctx.lineWidth = '1px'
+  }
+}
+
+export class util_veigar_primordial_burst extends util_tgt {
+  constructor (vm, src, tgt) {
+    super(vm, src, tgt)
+    this.sp = src.util.spell_sp
+    let flag = this.tgt.lvl < this.src.lvl
+    if (flag) {
+      this.damage = 100000
+      this.type = 2
+    } else {
+      this.damage = [350, 650, 950][this.src.lvl]
+      this.type = 1
+    }
+  }
+  draw (ctx) {
+    let x, y = this.vm.getBasedCoord(this.src.pos)
+    ctx.fillStyle = '#1e1aa5'
+    ctx.beginPath()
+    ctx.arc(x, y, 80, 0, 2*Math.PI)
+    ctx.fill()
+  }
+  effect () {
+    this.vm.damage(this, this.tgt)
+    removeFromArr(this.vm.util, this)
+  }
+}
+
+
+export class util_karthus_requiem extends util_area {
+  constructor (vm, src) {
+    super(vm, src, tgt)
+    this.now = 0
+    this.duration = this.src.spell_post
+    this.post = 45
+    this.damage = [350, 600, 850][this.src.lvl]
+    this.type = 1
+    this.tgts = []
+    let grids = this.vm.grid
+    let avails = []
+    for (let r in grids) {
+      for (let c in grids[r]) {
+        let tgt = grids[r][c]
+        if (tgt && tgt.camp != this.camp) {
+          avails.push([r,c])
+        }
+      }
+    }
+    for (let i = 0; i < this.util.n_tgt; i++) {
+      let pos = splice(randInt(avails.length), 1)
+      let tgt = grids[pos[0]][pos[1]]
+      if (tgt) {
+        this.tgts.push(tgt)
+      }
+    }
+  }
+  act () {
+    this.now++
+    if (this.status.prepare && this.now == this.duration) {
+      for (let i in this.tgts) {
+        this.vm.damage(this, this.tgts[i])
+      }
+      this.status = {done:true}
+      this.now = 0
+    }
+    if (this.status.done && this.now == this.post) {
+      removeFromArr(this.vm.util, this)
+    }
+  }
+  draw (ctx) {
+    let opacity = this.status.prepare ? this.now/this.duration*0.3+0.1 : 1-this.now/this.post
+    for (let i in this.tgts) {
+      let pos = this.tgts[i].pos
+      let x, y = this.vm.getBasedCoord(pos)
+      ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`
+      ctx.fillRect(x-10, y+10, 20, -300)
+    }
   }
 }

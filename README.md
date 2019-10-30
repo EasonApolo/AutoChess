@@ -63,7 +63,7 @@
 | Elise |  | Evelynn |  |
 | Fiora |  | Gangplank |  |
 | Garen | √ | Gnar | √ |
-| Graves | √ | Karthus |  |
+| Graves | √ | Karthus | √ |
 | Kassadin | √ | Katarina |  |
 | Kayle |  | Kennen | √ |
 | Khazix | √ | Kindred |  |
@@ -76,7 +76,7 @@
 | Sejuani |  | Shen | √ |
 | Shyvana | √ | Swain |  |
 | Tristana | √ | Varus | √ |
-| Vayne | √ | Veigar |  |
+| Vayne | √ | Veigar | √ |
 | Volibear | √ | Warwick | √ |
 | Yasuo | √ | Zed |  |
 | Twisted Fate |  | Camille |  |
