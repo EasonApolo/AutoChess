@@ -757,7 +757,32 @@ export class util_karthus_requiem extends util_area {
 }
 
 
-export class util_brand_pyroclasm extends util_tgt {
+export class util_gangplank_keg extends util_tgt {
+  constructor (vm, src, pos) {
+    super(vm, src)
+    this.damage = [150, 250, 350][this.src.lvl]
+    this.type = 1
+    this.pos = pos
+  }
+  draw (ctx) {
+    let x, y = this.vm.getBasedCoord(this.pos)
+    ctx.fillStyle = '#888'
+    ctx.arc(x, y, 100, 0, Math.PI*2)
+  }
+  effect () {
+    let sixPos = this.vm.getSixPos(this.pos)
+    sixPos.push(this.pos)
+    for (let i in sixPos) {
+      let pos = sixPos[i]
+      let tgt = this.vm.board.grid[pos[0]][pos[1]]
+      if (tgt != undefined && tgt.camp != this.camp) {
+        this.vm.damage(this, tgt)
+      }
+    }
+  }
+}
+
+export class util_brand_pyroclasm extends util_area {
   constructor (vm, src, tgt) {
     super(vm, src, tgt)
     this.damage = [250, 450, 650][this.src.lvl]

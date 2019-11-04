@@ -1143,7 +1143,7 @@ export default {
       for (let i in grid) {
         for (let j in grid[i]) {
           if (grid[i][j] !== undefined) {
-            if (grid[i][j].camp !== chess.camp) {
+            if (grid[i][j].camp !== chess.camp && !grid[i][j].untargetable) {
               let dis = this.getDistance(r,c, i,j)
               if (dis < minDis) {
                 minDis = dis

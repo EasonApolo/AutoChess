@@ -61,7 +61,7 @@
 | Braum | √ | Chogath | √ |
 | Darius | √ | Draven | √ |
 | Elise |  | Evelynn |  |
-| Fiora |  | Gangplank |  |
+| Fiora |  | Gangplank | √ |
 | Garen | √ | Gnar | √ |
 | Graves | √ | Karthus | √ |
 | Kassadin | √ | Katarina |  |
@@ -70,9 +70,9 @@
 | Leona |  | Lissandra |  |
 | Lucian | √ | Lulu | √ |
 | Miss Fortune |  | Mordekaiser | √ |
-| Morgana |  | Nidalee | √ |
-| Poppy |  | Pyke |  |
-| RekSai |  | Rengar |  |
+| Morgana | √ | Nidalee | √ |
+| Poppy | √ | Pyke |  |
+| RekSai |  | Rengar | √ |
 | Sejuani |  | Shen | √ |
 | Shyvana | √ | Swain |  |
 | Tristana | √ | Varus | √ |

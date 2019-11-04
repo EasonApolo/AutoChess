@@ -741,6 +741,41 @@ export class buff_morgana_soulshackles extends buff {
   }
 }
 
+export class buff_gangplank_keg extends buff {
+  constructor (vm, src) {
+    super(vm, src)
+    this.kegs = []
+    this.atk = 0
+  }
+  response (type) {
+    if (['atk'].includes(type)) {
+      this.atk++
+      if (this.atk == 2) {
+        this.atk == 0
+        let grids = this.vm.board.grid
+        let tgts = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt != undefined && tgt.camp != this.camp) {
+              tgts.push({hp:tgt.hp, pos: [r,c]})
+            }
+          }
+        }
+      }
+      tgts = tgts.sort((a,b) => a.hp-b.hp)
+      let idx = this.kegs.length % tgts.length
+      this.kegs.push(new util_gangplank_keg(this.vm, this.src, tgts[this.kegs.length].pos))
+    }
+    else if (['detonate'].includes(type)) {
+      for (let i in this.kegs) {
+        this.kegs[i].effect()
+      }
+      this.kegs = []
+    }
+  }
+}
+
 
 export class chess {
   constructor (vm) {
@@ -1776,7 +1811,7 @@ export default [
       }
       this.spell_pre = 10
       this.spell = function spirits_refuge () {
-        let grids = this.vm.grid
+        let grids = this.vm.board.grid
         let minTgt = undefined
         let minHp = 1000000
         for (let r in grids) {
@@ -1914,7 +1949,7 @@ export default [
         this.buff.push(new buff_val(this.vm, this, 'ad', this.util.bonus_ad_base[this.lvl]))
         this.buff.push(new buff_shyvana_dragondescent(this.vm, this))
         if (this.status.target) {
-          let grids = this.vm.grid
+          let grids = this.vm.board.grid
           let orient = getApproxOrient(...this.status.target.pos, ...this.pos)
           let dis = this.vm.getDistance(...this.pos, ...this.status.target.pos)
           let current = this.pos
@@ -2113,7 +2148,7 @@ export default [
       }
       this.spell_pre = 45
       this.spell = function pyroclasm () {
-        let grids = this.vm.grid
+        let grids = this.vm.board.grid
         let avails = []
         for (let r in grids) {
           for (let c in grids[r]) {
@@ -2166,7 +2201,7 @@ export default [
       }
       this.spell_pre = 15
       this.spell = function pyroclasm () {
-        let grids = this.vm.grid
+        let grids = this.vm.board.grid
         for (let r in grids) {
           for (let c in grids[r]) {
             let tgt = grids[r][c]
@@ -2211,7 +2246,7 @@ export default [
       }
       this.spell_pre = 15
       this.spell = function pyroclasm () {
-        let grids = this.vm.grid
+        let grids = this.vm.board.grid
         let avails = []
         for (let r in grids) {
           for (let c in grids[r]) {
@@ -2236,6 +2271,129 @@ export default [
             }
           }
         }
+      }
+    }
+  },
+
+  class GangPlank extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 32,
+      this._name = '海洋之灾',
+      this.src = 'GangPlank.png',
+      this.cat = [0, 3, 5],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 100,
+      this._as = 0.65,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+        new buff_gangplank_keg()
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 15
+      this.spell = function powder_kegs () {
+        for (let i in this.buff) {
+          this.buff[i].response('detonate')
+        }
+      }
+    }
+  },
+
+  class GangPlank extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 32,
+      this._name = '海洋之灾',
+      this.src = 'GangPlank.png',
+      this.cat = [0, 3, 5],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [700, 1260, 2520]
+      this.ad_base = [65, 117, 234]
+      this.size = this.size_base[this.lvl],
+      this._hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 100,
+      this._as = 0.65,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+        new buff_gangplank_keg()
+      ]
+      this.util = {
+        sp: 1000,
+      }
+      this.spell_pre = 15
+      this.spell = function powder_kegs () {
+        for (let i in this.buff) {
+          this.buff[i].response('detonate')
+        }
+      }
+    }
+  },
+
+  class Reksai extends chess {
+    constructor (vm, lvl) {
+      super(vm)
+      this.id = 33,
+      this._name = '虚空遁地者',
+      this.src = 'Reksai.png',
+      this.cat = [7, 8],
+      this.lvl = lvl
+      this.size_base = [0.65, 0.8, 0.95]
+      this.hp_base = [650, 1170, 2340]
+      this.ad_base = [50, 90, 180]
+      this.size = this.size_base[this.lvl],
+      this._hp = this.hp_base[this.lvl],
+      this._ad = this.ad_base[this.lvl],
+      this.mp = 150,
+      this._as = 0.6,
+      this.range = 1,
+      this.sp = 60,
+      this.armor = 20,
+      this.mr = 20,
+      this._crit = 0.25,
+      this.buff = [
+        new buff_gangplank_keg()
+      ]
+      this.util = {
+        sp: 1000,
+        spell_sp: 20
+      }
+      this.spell_pre = 0
+      this.spell = function powder_kegs () {
+        let grids = this.vm.board.grid
+        let avails = []
+        for (let r in grids) {
+          for (let c in grids[r]) {
+            let tgt = grids[r][c]
+            if (tgt != undefined && tgt.camp != this.camp && this.vm.getDistance(r, c, ...this.pos) <= 2) {
+              avails.push(tgt)
+            }
+          }
+        }
+        let tgtOppPos = avails[randInt(avails.length)].pos
+        let six = this.vm.getSixPos(tgtOppPos)
+        let tgt = six[randInt(six.length)]
+        this.status.attack = undefined
+        this.status.spell = undefined
+        this.status.jump = {p:0, pn:this.util.spell_sp, src: this.pos, tgt: tgt}
+        
       }
     }
   }
