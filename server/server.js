@@ -1,7 +1,9 @@
 var express = require('express')
 var app = express()
-var fs = require('fs')
+var expressWs = require('express-ws')(app);
+var fs = require('fs').promises
 var multer = require('multer')().single()
+
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -9,10 +11,31 @@ app.use((req, res, next) => {
 })
 app.use(multer)
 
-var rooms = []
-var newRoomId = 1
 const MAX_N_PLAYER = 4
 
+var rooms = []
+var newRoomId = 1
+var users = []
+
+/*
+    helper functions
+*/
+json = function (json, res=undefined) {
+    let data = JSON.stringify(json)
+    if (res) res.end(data)
+    else this.end(data)
+}
+async function readUserInfo () {
+    let userInfo
+    try {
+        userInfo = await fs.readFile(`./users.json`, 'utf-8')
+        userInfo = JSON.parse(userInfo)
+    } catch (err) {
+        console.log(err)
+    } finally {
+        return userInfo
+    }
+}
 getNewRoomId = () => {
     return newRoomId++
 }
@@ -21,69 +44,59 @@ getEnemyId = (stage, id, len) => {      // stage start from 0
     if (tmp >= id) tmp++
     return tmp
 }
-getRoom = (roomid) => {
-    for (let i in rooms) {
-        if (rooms[i].id == roomid) {    // roomid is parsed from request, usually string, use ==
-            return i
-        }
-    }
-    return undefined
+getRoom = rid => {
+    return rooms.find(r => r.id == rid)
 }
-getUser = (roomid, username) => {
-    let i = getRoom(roomid)
-    for (let j in rooms[i].users) {
-        if (rooms[i].users[j].name === username) {
-            return [i, j, rooms[i].users[j]]
-        }
-    }
-    return []
+getUser = (rid, uid) => {
+    let room = getRoom(rid)
+    return room.ps.find(p => p.id == uid)
 }
 
+/*
+    immediately execute
+    */
+readUserInfo().then(userInfo => {
+    users = userInfo
+    console.log(users)
+    console.log(`loading userInfo OK with ${users.length} users`)
+})
+
+/*
+    login
+*/
 app.post('/user/login', (req, res) => {
-    let name = req.body.name
-    let password = req.body.password
-    fs.readFile(__dirname + '/' + 'users.json', (err, data) => {
-        data = JSON.parse(data)
-        for (let i in data) {
-            if (i === name) {
-                if (data[i].password === password) {    // login success
-                    for (let i in rooms) {
-                        for (let j in rooms[i].users) {
-                            if (rooms[i].users[j].name === name) {
-                                res.end(JSON.stringify(rooms[i]))
-                            }
-                        }
-                    }
-                    res.end(JSON.stringify({}))
-                }
-                else {
-                    res.end(JSON.stringify({'error': 'password'}))
-                }
-            }
+    let {name, password} = req.body
+    let echo = json.bind(res)
+    let user = users.find(v => v.name == name && v.password == password)
+    if (user) {
+        user.online = true
+        if (user.room) {
+            echo({room: user.room})
+        } else {
+            echo({rooms: rooms})
         }
-        res.end(JSON.stringify({'error': 'no user'}))
-    })
+    } else {
+        echo({err: 'invalid name or password'})
+    }
 })
 app.post('/user/signup', (req, res) => {
-    let name = req.body.name
-    let password = req.body.password
-    fs.readFile(__dirname + '/' + 'users.json', (err, data) => {
-        data = JSON.parse(data)
-        let cnt = 0
-        for (let i in data) {
-            if (i === name) {
-                res.end(JSON.stringify({'error': 'username exist'}))
-            }
-            cnt++
-        }
-        data[name] = {'password': password, 'id': cnt}
-        fs.writeFile(__dirname + '/' + 'users.json', JSON.stringify(data), (err) => {
-            if (err) throw err
-            res.end(JSON.stringify(data[name]))
-        })
-    })
+    let {name, password} = req.body
+    let echo = json.bind(res)
+    if (users.find(v => v.name == name)) {
+        echo({err: 'username duplicated'})
+    } else {
+        let lastId = users.slice(-1).id
+        let id = lastId == undefined ? 0 : lastId++
+        let newUser = {name: name, id: id, password: password}
+        console.log(`signup user: `, newUser)
+        users.push(newUser)
+        echo({user: newUser})
+    }
 })
 
+/*
+    room
+*/
 app.post('/room/create', (req, res) => {
     let name = req.body.name
     let room = {id:getNewRoomId(), start: false, stage:0, users:[{'name': name}]}
@@ -136,6 +149,9 @@ app.post('/room', (req, res) => {
     }
 })
 
+/*
+    game
+*/
 app.post('/data/start', (req, res) => {
     let id = req.body.roomid
     let name = req.body.name

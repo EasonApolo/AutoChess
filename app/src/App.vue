@@ -1,37 +1,44 @@
 <template>
   <div id="app">
-    <div v-if='entry.inentry' class='entry'>
-      <div class='block' v-if="!entry.login">
-        <input v-model='entry.name' placeholder="name"><br>
-        <input v-model='entry.password' placeholder="password"><br>
-        <div v-if="entry.error">{{entry.error}}</div>
+    <pop></pop>
+    <div v-if='state != 3' class='entry'>
+      <div class='block login' v-if="state == 0">
+        <input v-model='name' placeholder="name">
+        <input v-model='password' placeholder="password">
         <button @click='login'>登录</button>
         <button @click='signup'>注册</button>
       </div>
-      <div class='block' v-if="entry.login && !entry.inroom">
-        {{entry.name}}
-        <button @click='createRoom' v-show='entry.name'>创建房间</button>
-        <div v-if="entry.error">{{entry.error}}</div>
-        <div class='block-list' v-show='entry.name'>
-        房间列表：
-          <div v-for="room in entry.rooms" :key='room.id' :class='{disable:room.users.length>=2}' @click='joinRoom(room.id)'>
-            <span>{{room.users[0].name}}</span>
-            <span v-if="room.users[1]">{{room.users[1].name}}</span>
-            <span v-if="!room.start" class='span-right'>{{room.users.length}}/2 准备中</span>
-            <span v-if="room.start" class='span-right'>第{{room.stage}}回合</span>
+      <div class='block' v-if="state == 1">
+        <div class='userinfo'>
+          <span class='name'>{{name}}</span>
+        </div>
+        <div>
+          <div class='actions'>
+            <button @click='createRoom'>创建房间</button>
+          </div>
+          <div class='list'>
+            <div class='head'>房间列表：</div>
+            <div class='item' v-if='rooms.length == 0'>
+              <span>还没有房间，创建一个吧！</span>
+            </div>
+            <div class='item' v-for="r in rooms" :key='r.id' :class='{disable:r.users.length>=2}' @click='joinRoom(r.id)'>
+              <span>{{r.users[0].name}}</span>
+              <span v-if="r.users[1]">{{r.users[1].name}}</span>
+              <span v-if="!r.start" class='span-right'>{{r.users.length}}/2 准备中</span>
+              <span v-if="r.start" class='span-right'>第{{r.stage}}回合</span>
+            </div>
           </div>
         </div>
       </div>
-      <div class='block' v-if="entry.inroom">
-        {{entry.name}}
-        <div>房间中</div>
-        <div v-if="entry.error">{{entry.error}}</div>
-        <div class='block-list'>
-          玩家列表：
-          <div v-for="u in entry.room.users" :key='u.id'>{{u.name}}</div>
+      <div class='block' v-if="state == 2">
+        <div class='actions'>
+          <button @click='startRoom' :disabled='entry.room.users.length<2'>开始</button>
+          <button @click='exitRoom'>退出</button>
         </div>
-        <button @click='startRoom' :disabled='entry.room.users.length<2'>开始</button>
-        <button @click='exitRoom'>退出</button>
+        <div class='list'>
+          <div class='head'>玩家列表：</div>
+          <div class='item' v-for="u in entry.room.users" :key='u.id'>{{u.name}}</div>
+        </div>
       </div>
     </div>
     <div v-if='!entry.inentry' class='game'>
@@ -61,6 +68,8 @@
 </template>
 
 <script>
+import bus from './bus'
+import Pop from './Pop'
 import CardInfo from './assets/card'
 import ClassInfo from './assets/class'
 import PosInfo from './assets/position'
@@ -77,11 +86,14 @@ export default {
   name: 'app',
   data () {
     return {
+      state: 0,
+      room: {},
+      rooms: [],
+      name: '',
+      password: '',
       entry: {
         inentry: true,
         error: undefined,
-        name: '',
-        password: '',
         login: false,
         rooms: undefined,
         inroom: false,
@@ -132,6 +144,9 @@ export default {
       ip: 'http://localhost:81/',
     }
   },
+  components: {
+    Pop
+  },
   created () {
     addEventListener('mousemove', e => {
       this.mouse.x = e.clientX * 2
@@ -162,20 +177,30 @@ export default {
       return this.getUserIndex(this.entry.name)
     },
     dealError (error) {
-      console.log(error)
+      bus.$emit('pop', error)
     },
-    fetch (route, param) {
+    async fetch (route, param) {
       let formData = new FormData()
       for (let k in param) {
         formData.append(k, param[k])
       }
+      return await fetch(`${this.ip}${route}`, {
+        body: formData,
+        method: 'POST',
+      }).then(res => res.json())
+      .then(json => {
+        if (json.err) {
+          this.dealError(json)
+        }
+        return json
+      })
       return new Promise((resolve, reject) => {
         fetch(this.ip+route, {
           body: formData,
           method: 'POST',
         }).then(res => res.json())
         .then(json => {
-          if (json.error) {
+          if (json.err) {
             this.dealError(json)
             reject()
           }
@@ -183,20 +208,32 @@ export default {
         })
       })
     },
+    emptyLoginInfo () {
+      if (this.name == '' || this.password == '') {
+        this.dealError('empty username or password')
+        return true
+      }
+    },
     login () {
-      let param = {name: this.entry.name, password: this.entry.password}
+      if (this.emptyLoginInfo()) return
+      let param = {name: this.name, password: this.password}
       this.fetch('user/login', param).then(json => {
-        this.entry.login = true
-        if (json.start !== undefined) {
-          this.entry.inroom = true
-          this.entry.room = json
-        } 
+        if (json.rooms) {
+          this.state = 1
+          this.rooms = json.rooms
+        } else if (json.room) {
+          this.state = 2
+          this.room = json.room
+        }
       })
     },
     signup () {
-      let param = {name: this.entry.name, password: this.entry.password}
+      if (this.emptyLoginInfo()) return
+      let param = {name: this.name, password: this.password}
       this.fetch('user/signup', param).then(json => {
-        this.entry.login = true
+        if (json.user) {
+          this.dealError('register success! click login.')
+        }
       })
     },
     fetchStatus () {
@@ -1291,6 +1328,7 @@ export default {
         let cenT = bh/2+bMarTop+(i-2.5)*1.5*w1
         for (let j in this.board.grid[i]) {
           let cenL = this.w/2+(j-3)*ratio*2*w1+bias
+          // grid
           ctx.beginPath()
           for (let k =0; k < 6; k++) {
             let rad = Math.PI*(1/3*k-1/6)
@@ -1532,6 +1570,8 @@ export default {
         ctx.stroke()
         ctx.lineWidth = 1
       }
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
       ctx.fillText(this.entry.room.stage, this.w/2, info.t)
     },
     drawPlayers () {
@@ -1563,46 +1603,78 @@ body {
 }
 #app {
   position: relative;
-  font-family: 'Avenir', Helvetica, Arial, sans-serif;
+  font-family: Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   height: 100%;
   text-align: center;
   color: #2c3e50;
 }
-button {
-  outline: none;
-  background-color: #EEE;
-  border: none;
-  padding: .5rem;
-  cursor: pointer;
-}
 input {
+  margin-bottom: 1rem;
+  padding: .375rem 1rem;
+  height: 1rem;
+  border: none;
+  border-bottom: #eee 1px solid;
+  font-family: Hiragino Sans GB, Helvetica, Arial,sans-serif;
   outline: none;
-  padding: .5rem;
-  border: #ccc 1px solid;
+  transition: .3s linear;
+  &:hover, &:focus {
+    border-bottom: #aaa 1px solid;
+  }
+}
+button {
+  display: block;
+  margin-bottom: 1rem;
+  width: 10rem;
+  height: 2rem;
+  outline: none;
+  border: #eee 1px solid;
+  cursor: pointer;
+  transition: .3s ease-in-out;
+  &:hover {
+    border: #bbb 1px solid;
+  }
 }
 .entry {
   height: 100%;
   text-align: left;
   .block {
-    padding-top: 3rem;
+    padding: 3rem 2rem 0 2rem;
     text-align: center;
-    button {
-      padding: 1rem 2rem;
-      margin: 1rem 1rem;
-      transition: .2s ease-in-out;
-      &:hover {
-        background-color: #ddd;
+    .userinfo {
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #ccc;
+      .name {
+        color: green;
+        font-weight: bold;
       }
     }
   }
-  .block-list {
-    padding: 2rem 2rem;
+  .login {
+    input, button {
+      display: block;
+      margin: 0 auto 1rem auto;
+    }
+  }
+  .actions {
+    display: flex;
+    button {
+      flex: 0 0 auto;
+      margin-right: 1rem;
+    }
+  }
+  .list {
     text-align: left;
-    div {
+    .head {
+      padding: .5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    .item {
       padding: 2rem;
-      border-top: 1px solid #ddd;
+      border-bottom: 1px solid #eee;
       cursor: pointer;
       &:hover {
         background-color: #fafafa;
@@ -1621,10 +1693,6 @@ input {
 }
 .game {
   height: 100%;
-  // opacity: 0;
-  // &:hover {
-  //   opacity: 1;
-  // }
 }
 .show {
   position: fixed;
