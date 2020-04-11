@@ -76,8 +76,8 @@
 
       <!-- equip -->
       <v-card class='d-flex pa-2 pb-0 mx-auto flex-column justify-space-around' style='position:absolute;bottom:15.5rem;left:4rem'>
-        <v-card class='mb-2' width='3rem' v-for='c in store.cards' :key='c.id'>
-          <img v-if='c.src' class='d-block' width='100%' src='RecurveBow.png'>
+        <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index'>
+          <img v-if='e.src' class='d-block' width='100%' src='RecurveBow.png'>
           <v-sheet v-else width='100%' height='3rem'></v-sheet>
         </v-card>
       </v-card>
@@ -222,6 +222,13 @@ export default {
         this.ws.room.close()
         this.ws.room = undefined
       }
+    },
+    'room.stage': function (new_val, old_val) {
+      // other player started game
+      if (new_val == 1 && this.state != 3) {
+        this.state = 3
+        this.$nextTick(this.initializeGame)
+      }
     }
   },
   methods: {
@@ -364,6 +371,9 @@ export default {
     },
     wsCard () {
       this.ws.card = new WebSocket(`${ this.ws.ip }game/card?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.card.onopen = () => {
+        this.syncStore('init')
+      }
       this.ws.card.onmessage = e => {
         let card_ids = JSON.parse(e.data)
         this.store.cards = []
@@ -384,11 +394,14 @@ export default {
       // })
     },
     deal () {
-      this.ws.card.send('deal')
-      // for (let i = 0; i < 5; i++) {
-      //   let cardId = Math.floor(Math.random()*CardInfo.length)
-      //   this.store.cards[i] = CardInfo[cardId]
-      // }
+      this.syncStore('deal')
+    },
+    syncStore (type) {
+      let current = this.store.cards
+        .filter(v => v.id != undefined)
+        .map(c => ({ id: c.id, lvl: c.cost-1 }))   // cost from 1, card lvl from 0
+      let data = { type: type, cards: current}
+      this.ws.card.send(JSON.stringify(data))
     },
     main () {
       this.clearAll()

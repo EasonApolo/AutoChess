@@ -155,7 +155,6 @@ app.post('/room/exit', (req, res) => {
 })
 app.ws('/room/list', (ws, req) => {
     let send = () => ws.send(JSON.stringify(rooms))
-    ws.onopen = send
     let interval = setInterval(send, 1000)
     ws.onclose = () => {
         clearInterval(interval)
@@ -165,7 +164,6 @@ app.ws('/room', (ws, req) => {
     let { rid } = req.query
     let room = getRoom(rid)
     let send = () => ws.send(JSON.stringify(room))
-    ws.onopen = send
     let interval = setInterval(send, 1000)
     ws.onclose = () => clearInterval(interval)
 })
@@ -212,19 +210,42 @@ app.ws('/game/card', (ws, req) => {
     const N_DRAW = 5
     let game = games[rid], pool = game.pool, g_user = game.users[uid]
     let send = wsSend(ws)
-    let deal = () => {
-        let draw = new Array()
+    let putback = (cards) => {
+        for (let i in cards) {
+            pool[cards[i].lvl].push(cards[i].id)
+        }
+    }
+    let drawCards = () => {
+        let drawn_all = new Array()
         for (let i = 0; i < N_DRAW; i++) {
             let draw_from_lvl = drawFromWhichLvl(g_user.lvl)
-            log(`draw from lvl: ${draw_from_lvl}`)
-            let drawn_card = pool[draw_from_lvl].splice(randInt(pool[draw_from_lvl].length), 1)
-            draw = draw.concat(drawn_card)
+            let drawn = pool[draw_from_lvl].splice(randInt(pool[draw_from_lvl].length), 1)
+            drawn_all = drawn_all.concat(drawn)
         }
-        log(`DRAW: game ${ rid }, user ${ uid }, draw`, draw, 'left', pool.map(v => v.length))
-        send(draw)
+        return drawn_all
     }
-    ws.onopen = deal
-    ws.onmessage = deal
+    ws.onmessage = e => {
+        let data = JSON.parse(e.data)
+        if (data.type == 'deal') {
+            putback(data.cards)
+            let drawn = drawCards()
+            g_user.store = drawn
+            log(`DRAW: game ${ rid }, user ${ uid }, draw`, drawn, 'left', pool.map(v => v.length))
+            send(drawn)
+        } else if (data.type == 'init') {
+            let drawn, re = false
+            if (g_user.store) {
+                drawn = g_user.store
+                re = true
+            }
+            else {
+                drawn = drawCards()
+                g_user.store = drawn
+            }
+            log(`DRAW: game ${ rid }, user ${ uid }, ${ re ? 're-' : '' }init`, drawn, 'left', pool.map(v => v.length))
+            send(drawn)
+        }
+    }
     log(`DEAL: room ${ rid } | user ${ uid } established`)
 })
 
