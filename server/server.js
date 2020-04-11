@@ -3,7 +3,7 @@ var app = express()
 var expressWs = require('express-ws')(app);
 var fs = require('fs').promises
 var multer = require('multer')().single()
-
+const assert = require('assert');
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*')
@@ -11,21 +11,15 @@ app.use((req, res, next) => {
 })
 app.use(multer)
 
-const MAX_N_PLAYER = 4
-
 var rooms = []
-var newRoomId = 1
 var users = []
+var games = {}
+
 
 /*
-    helper functions
-*/
-json = function (json, res=undefined) {
-    let data = JSON.stringify(json)
-    if (res) res.end(data)
-    else this.end(data)
-}
-async function readUserInfo () {
+    on Server Start
+    */
+async function loadUserInfo () {
     let userInfo
     try {
         userInfo = await fs.readFile(`./users.json`, 'utf-8')
@@ -36,30 +30,38 @@ async function readUserInfo () {
         return userInfo
     }
 }
-getNewRoomId = () => {
-    return newRoomId++
-}
-getEnemyId = (stage, id, len) => {      // stage start from 0
-    let tmp = (id+stage)%(len-1)
-    if (tmp >= id) tmp++
-    return tmp
-}
-getRoom = rid => {
-    return rooms.find(r => r.id == rid)
-}
-getUser = (rid, uid) => {
-    let room = getRoom(rid)
-    return room.ps.find(p => p.id == uid)
-}
-
-/*
-    immediately execute
-    */
-readUserInfo().then(userInfo => {
+loadUserInfo().then(userInfo => {
     users = userInfo
-    console.log(users)
     console.log(`loading userInfo OK with ${users.length} users`)
 })
+
+
+/*
+    global helper functions
+*/
+function wsSend (ws) {
+    return function (json) {
+        ws.send(JSON.stringify(json))
+    }
+}
+function randInt (n, b=0) {
+    return Math.floor(Math.random()*n)+b
+}
+function log (...args) {
+    console.log(...args)
+}
+function json (json, res=undefined) {
+    let data = JSON.stringify(json)
+    if (res) res.end(data)
+    else this.end(data)
+}
+function getRoom (rid) {
+    return rooms.find(r => r.id == rid)
+}
+function getUser (uid) {
+    return users.find(u => u.id == uid)
+}
+
 
 /*
     login
@@ -70,13 +72,9 @@ app.post('/user/login', (req, res) => {
     let user = users.find(v => v.name == name && v.password == password)
     if (user) {
         user.online = true
-        if (user.room) {
-            echo({room: user.room})
-        } else {
-            echo({rooms: rooms})
-        }
+        echo({ user: user })
     } else {
-        echo({err: 'invalid name or password'})
+        echo({ err: 'invalid name or password' })
     }
 })
 app.post('/user/signup', (req, res) => {
@@ -94,64 +92,182 @@ app.post('/user/signup', (req, res) => {
     }
 })
 
+
 /*
     room
 */
+const MAX_N_PLAYERS = 4
+var getNewRoomId = (function () {
+    let id = 0
+    return function () {
+        return id++
+    }
+})()
+function joinRoom (room, user) {
+    if (room.users == undefined) room.users = []
+    room.users.push(user)
+    user.room = room.id
+}
+function quitRoom (room, user) {
+    if (user.room == undefined) return
+    let index = room.users.findIndex(u => u.id == user.id)
+    if (index < 0) return
+    room.users.splice(index, 1)
+    user.room = undefined
+}
 app.post('/room/create', (req, res) => {
-    let name = req.body.name
-    let room = {id:getNewRoomId(), start: false, stage:0, users:[{'name': name}]}
+    let { uid } = req.body
+    let user = getUser(uid)
+    let room = { id: getNewRoomId(), stage: 0 }
+    joinRoom(room, user)
     rooms.push(room)
-    res.end(JSON.stringify(room))
+    log(`CREAT: ${ user.name } create room ${ room.id }`)
+    json({ room: room }, res)
 })
 app.post('/room/join', (req, res) => {
-    let name = req.body.name
-    let id = req.body.roomid
-    let i = getRoom(id)
-    if (!i) res.end(JSON.stringify({'error': 'room not exist'}))
-    if (rooms[i].users.length < MAX_N_PLAYER) {
-        rooms[i].users.push({'name': name})
-        res.end(JSON.stringify(rooms[i]))
+    let { rid, uid } = req.body
+    let echo = json.bind(res)
+    let room = getRoom(rid), user = getUser(uid)
+    if (room == undefined) echo({ err: `no room id ${rid}` })
+    if (room.users.length >= MAX_N_PLAYERS) {
+        echo({ err: `room ${ rid } users full` })
+    } else {
+        joinRoom(room, getUser(uid))
+        log(`JOIN: ${ user.name } create room ${ room.id }`)
+        echo({ room: room })
     }
-    res.end(JSON.stringify({'error': 'room not available'}))
 })
 app.post('/room/exit', (req, res) => {
-    let name = req.body.name
-    let id = req.body.roomid
-    let [i, j, _] = getUser(id, name)
-    if (i) {
-        rooms[i].users.splice(j, 1)
-        if (rooms[i].users.length <= 0) {
-            rooms.splice(i, 1)
+    let { uid } = req.body
+    let user = getUser(uid)
+    if (user.room != undefined) {
+        let room = getRoom(user.room)
+        quitRoom(room, getUser(uid))
+        log(`QUIT: ${ user.name } quit room ${ room.id }`)
+        // destroy room if no users
+        if (room.users.length <= 0) {
+            let index = rooms.findIndex(r => r.id == room.id)
+            rooms.splice(index, 1)
+            log(`DESTROY: ${ room.id } is destroyed for no user`)
         }
-        res.end(JSON.stringify(rooms))
+    }
+    json({ rooms: rooms }, res)
+})
+app.ws('/room/list', (ws, req) => {
+    let send = () => ws.send(JSON.stringify(rooms))
+    ws.onopen = send
+    let interval = setInterval(send, 1000)
+    ws.onclose = () => {
+        clearInterval(interval)
     }
 })
-app.post('/room/start', (req, res) => {
-    let id = req.body.roomid
-    let i = getRoom(id)
-    if (i) {
-        rooms[i].start = true
-        rooms[i].users.map(v => {
-            v.hp = 100
-        })
-        res.end(JSON.stringify(rooms))
-    }
-})
-app.get('/room/list', (req, res) => {
-    res.end(JSON.stringify(rooms))
+app.ws('/room', (ws, req) => {
+    let { rid } = req.query
+    let room = getRoom(rid)
+    let send = () => ws.send(JSON.stringify(room))
+    ws.onopen = send
+    let interval = setInterval(send, 1000)
+    ws.onclose = () => clearInterval(interval)
 })
 
-app.post('/room', (req, res) => {
-    let id = req.body.roomid
-    let i = getRoom(id)
-    if (i) {
-        res.end(JSON.stringify(rooms[i]))
-    }
-})
 
 /*
-    game
+    cards
 */
+const CARD_ID = [
+    [0,3,6,7,8,10,12,15,17,21,22],
+    [1,14,16,20,27],
+    [4,9,11,19,24,25,29,30,31,32],
+    [5,13,23,28],
+    [2,18,26]
+]
+const CARD_N = [
+    5, // 39,
+    4, // 26,
+    3, // 18,
+    2, // 13,
+    1, // 10,
+]
+const DRAW_PROBS = [
+    [100,   0,   0,   0,   0],
+    [100,   0,   0,   0,   0],
+    [ 70 , 25,   5,   0,   0],
+    [ 55 , 30,  15,   0,   0],
+    [ 35 , 35,  25,   5,   0],
+    [ 25 , 35,  30,  10,   0],
+    [ 24 , 28,  31,  15,   2],
+    [ 20 , 24,  31,  20,   5],
+    [ 10 , 15,  33,  30,  12],
+]
+function drawFromWhichLvl (lvl) {
+    let probs = DRAW_PROBS[lvl]
+    let v = randInt(100)
+    for (let i in probs) {
+        v -= probs[i]
+        if (v < 0) return i
+    }
+}
+app.ws('/game/card', (ws, req) => {
+    let { rid, uid } = req.query
+    const N_DRAW = 5
+    let game = games[rid], pool = game.pool, g_user = game.users[uid]
+    let send = wsSend(ws)
+    let deal = () => {
+        let draw = new Array()
+        for (let i = 0; i < N_DRAW; i++) {
+            let draw_from_lvl = drawFromWhichLvl(g_user.lvl)
+            log(`draw from lvl: ${draw_from_lvl}`)
+            let drawn_card = pool[draw_from_lvl].splice(randInt(pool[draw_from_lvl].length), 1)
+            draw = draw.concat(drawn_card)
+        }
+        log(`DRAW: game ${ rid }, user ${ uid }, draw`, draw, 'left', pool.map(v => v.length))
+        send(draw)
+    }
+    ws.onopen = deal
+    ws.onmessage = deal
+    log(`DEAL: room ${ rid } | user ${ uid } established`)
+})
+
+
+/*
+    Game Initialization
+*/
+function getCards () {
+    let cards = new Array()
+    for (let l in CARD_ID) {
+        let cards_lvl = new Array()
+        for (let i in CARD_ID[l]) {
+            cards_lvl = cards_lvl.concat(new Array(CARD_N[l]).fill(CARD_ID[l][i]))
+        }
+        cards.push(cards_lvl)
+    }
+    return cards
+}
+app.post('/room/start', (req, res) => {
+    let { rid } = req.body
+    let room = getRoom(rid)
+    if (room) {
+        room.stage = 1
+        let f_init_users = (obj, u) => {
+            obj[u.id] = { lvl: 1, exp: 0, gold: 2, hp: 100 }
+            return obj
+        }
+        let new_game = { pool: getCards(), users: room.users.reduce(f_init_users, {}) }
+        games[room.id] = new_game
+        json({ room: room }, res)
+        log(`START: game ${ room.id } | pool `, new_game.pool.map(pool_lvl => pool_lvl.length), )
+    }
+})
+
+
+/*
+    Game data
+*/
+getEnemyId = (stage, id, len) => {      // stage start from 0
+    let tmp = (id+stage)%(len-1)
+    if (tmp >= id) tmp++
+    return tmp
+}
 app.post('/data/start', (req, res) => {
     let id = req.body.roomid
     let name = req.body.name
@@ -203,6 +319,10 @@ app.post('/data/end', (req, res) => {
     }
 })
 
+
+/*
+    Start Server
+*/
 var server = app.listen(81, () => {
     var host = server.address().address
     var port = server.address().port

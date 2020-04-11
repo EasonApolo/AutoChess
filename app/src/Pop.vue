@@ -1,7 +1,17 @@
 <template>
-  <div class="pop" :style="{right:getRight,left:getLeft,opacity:getOpacity}">
-    {{mes}}
-  </div>
+  <v-snackbar
+    v-model="snackbar"
+    :timeout="timeout"
+  >
+    {{ text }}
+    <v-btn
+      color="blue"
+      text
+      @click="snackbar = false"
+    >
+      Close
+    </v-btn>
+  </v-snackbar>
 </template>
 
 <script>
@@ -10,60 +20,18 @@ export default {
   name: 'pop',
   data () {
     return {
-      mes: '',
-      queue: [],
-      t: undefined,
-      t_a: 20,
-      t_s: 100,
+      text: '',
+      snackbar: false,
+      timeout: 2000,
     }
   },
   created () {
     bus.$on('pop', this.handler)
   },
-  computed: {
-    getRight () {
-      let a = this.t_a
-      if (this.t == undefined) return '100%'
-      if (this.t < a) return ((a-this.t)**3/80)+'%'
-      else return '0'
-    },
-    getLeft () {
-      let a = this.t_a
-      let d = this.t_s + 2 * a
-      if (this.t == undefined || this.t < (d - a)) return '0'
-      else return ((this.t+a-d)**3/80)+'%'
-    },
-    getOpacity () {
-      if (this.t == undefined) return 0
-      else if (this.t < this.t_a) return this.t/this.t_a
-      else if (this.t > this.t_s + this.t_a) return (this.t_s+2*this.t_a-this.t)/this.t_a
-      else return 1
-    },
-  },
   methods: {
-    handler: function (mes) {
-      this.queue.push(mes)
-    },
-    show: function (mes) {
-      this.mes = mes
-      this.t = 0
-      requestAnimationFrame(this.animation)
-    },
-    animation: function () {
-      if (this.t > this.t_s+2*this.t_a) {
-        this.t = undefined
-        this.queue.shift()
-      } else {
-        this.t ++
-        requestAnimationFrame(this.animation)
-      }
-    }
-  },
-  watch: {
-    'queue': function () {
-      if (this.queue.length > 0 && this.t == undefined) {
-        this.show(this.queue[0])
-      }
+    handler: function (text) {
+      this.text = text
+      this.snackbar = true
     }
   }
 }

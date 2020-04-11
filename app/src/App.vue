@@ -1,52 +1,91 @@
 <template>
-  <div id="app">
+  <v-app>
     <pop></pop>
-    <div v-if='state != 3' class='entry'>
-      <div class='block login' v-if="state == 0">
-        <input v-model='name' placeholder="name">
-        <input v-model='password' placeholder="password">
-        <button @click='login'>登录</button>
-        <button @click='signup'>注册</button>
+
+    <v-card class='mt-8 py-4 px-8 mx-auto' v-if="state == 0" width='25rem'>
+      <v-text-field v-model='username' hide-details label='username' required></v-text-field>
+      <v-text-field v-model='password' hide-details label='password' required></v-text-field>
+      <div class='my-4'>
+        <v-avatar class='mr-2' color="indigo" size="36" v-for='(u, id) in local.users' :key='id' @click='autoLogin(u)' style='cursor:pointer'>
+          <span class="white--text">{{u.username}}</span>
+        </v-avatar>
       </div>
-      <div class='block' v-if="state == 1">
-        <div class='userinfo'>
-          <span class='name'>{{name}}</span>
-        </div>
-        <div>
-          <div class='actions'>
-            <button @click='createRoom'>创建房间</button>
-          </div>
-          <div class='list'>
-            <div class='head'>房间列表：</div>
-            <div class='item' v-if='rooms.length == 0'>
-              <span>还没有房间，创建一个吧！</span>
-            </div>
-            <div class='item' v-for="r in rooms" :key='r.id' :class='{disable:r.users.length>=2}' @click='joinRoom(r.id)'>
-              <span>{{r.users[0].name}}</span>
-              <span v-if="r.users[1]">{{r.users[1].name}}</span>
-              <span v-if="!r.start" class='span-right'>{{r.users.length}}/2 准备中</span>
-              <span v-if="r.start" class='span-right'>第{{r.stage}}回合</span>
-            </div>
-          </div>
-        </div>
+      <v-btn block class='mb-4' @click='login' color='primary'>登录</v-btn>
+      <v-btn block class='mb-4' @click='signup'>注册</v-btn>
+    </v-card>
+
+    <v-card class='mt-8 pa-4 mx-auto' width='50rem' v-else-if="state == 1">
+      <div><span>{{user.name}}</span></div>
+      <v-divider class="my-4"></v-divider>
+      <div>
+        <v-btn @click='createRoom' color='primary'>创建房间</v-btn>
       </div>
-      <div class='block' v-if="state == 2">
-        <div class='actions'>
-          <button @click='startRoom' :disabled='entry.room.users.length<2'>开始</button>
-          <button @click='exitRoom'>退出</button>
-        </div>
-        <div class='list'>
-          <div class='head'>玩家列表：</div>
-          <div class='item' v-for="u in entry.room.users" :key='u.id'>{{u.name}}</div>
-        </div>
+      <v-divider class="my-4"></v-divider>
+      <v-list>
+        <v-list-item-group color="primary">
+          <v-list-item class='item' v-if='rooms.length == 0'>还没有房间，创建一个吧！</v-list-item>
+          <v-list-item class='item' v-for="r in rooms" :key='r.id' :class='{disable:r.users.length>=2}' @click='joinRoom(r.id)'>
+            <v-chip class='mr-2' v-for='u in r.users' :key='u.id'>{{u.name}}</v-chip>
+            <span>{{r.users.length}}/4</span>
+            <span v-if='r.stage==0'>准备中</span>
+            <span v-else>比赛中</span>
+          </v-list-item>
+        </v-list-item-group>
+      </v-list>
+    </v-card>
+
+    <v-card class='mt-8 pa-4 mx-auto' width='50rem' v-else-if="state == 2">
+      <div>
+        <v-btn class='mr-4' color='primary' @click='startRoom' :disabled='room.users && room.users.length < 2'>开始</v-btn>
+        <v-btn @click='exitRoom'>退出</v-btn>
       </div>
-    </div>
-    <div v-if='!entry.inentry' class='game'>
-      <canvas id='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
+      <v-divider class="my-4"></v-divider>
+      <v-list>
+        <v-list-item-group color="primary">
+          <v-list-item class='item' v-for="u in room.users" :key='u.id'>
+            {{u.name}}
+          </v-list-item>
+        </v-list-item-group>
+      </v-list>
+    </v-card>
+
+    <div v-else-if='state == 3' class='game' style='position:relative'>
+      <v-card class='mx-auto' style='position:absolute;bottom:15.5rem;left:0;right:0' width='750px' height='550px' ref='container'>
+        <canvas ref='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
+      </v-card>
+
+      <!-- store -->
+      <v-card class='d-flex mx-auto pa-2 ' width='39.5rem' style='position:absolute;bottom:.5rem;left:0;right:0'>
+        <div class=''>
+          <v-btn class='d-block mb-2' width='6rem' color='secondary' @click='deal'>deal</v-btn>
+          <v-btn class='d-block' width='6rem'>level{{game.lvl}}</v-btn>
+        </div>
+        <v-card class='ml-2' width='6rem' v-for='(c, index) in store.cards' :key='index'>
+          <img v-if='c.src' class='d-block' width='100%' :src='c.src'>
+          <v-sheet v-else width='100%' height='6rem'></v-sheet>
+        </v-card>
+      </v-card>
+
+      <!-- hand -->
+      <v-card class='d-flex mx-auto pa-2 pl-0 justify-space-around' width='59rem' style='position:absolute;bottom:8rem;left:0;right:0'>
+        <v-card class='ml-2' width='6rem' v-for='c in hand.cards' :key='c.id'>
+          <img v-if='c.src' class='d-block' width='100%' src='Varus.png'>
+          <v-sheet v-else width='100%' height='6rem'></v-sheet>
+        </v-card>
+      </v-card>
+
+      <!-- equip -->
+      <v-card class='d-flex pa-2 pb-0 mx-auto flex-column justify-space-around' style='position:absolute;bottom:15.5rem;left:4rem'>
+        <v-card class='mb-2' width='3rem' v-for='c in store.cards' :key='c.id'>
+          <img v-if='c.src' class='d-block' width='100%' src='RecurveBow.png'>
+          <v-sheet v-else width='100%' height='3rem'></v-sheet>
+        </v-card>
+      </v-card>
+
       <div v-for='src in allsrc' :key='src' style='display:none'>
         <img :src='src'>
       </div>
-      <div class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
+      <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
         {{showChess.name}}
         <div class='attr'>
           <div>hp:</div><div>{{(showChess.hp_||0).toFixed(0)}}/{{showChess.hp.toFixed(0)}}</div>
@@ -62,9 +101,9 @@
             {{buff.name}}
           </div>
         </div>
-      </div>
+      </v-card>
     </div>
-  </div>
+  </v-app>
 </template>
 
 <script>
@@ -87,17 +126,19 @@ export default {
   data () {
     return {
       state: 0,
+      username: '',
+      password: '',
+      local: {
+        users: {},
+      },
+      user: {},
       room: {},
       rooms: [],
-      name: '',
-      password: '',
-      entry: {
-        inentry: true,
-        error: undefined,
-        login: false,
+      ws: {
+        ip: `ws://localhost:81/`,
         rooms: undefined,
-        inroom: false,
         room: undefined,
+        card: undefined,
       },
       fetchID: undefined,
       canvas: undefined,
@@ -129,12 +170,12 @@ export default {
         grid: undefined,
       },
       store: {
-        cards: new Array(5).fill(undefined)
+        cards: new Array(5).fill(new Object())
       },
       hand: {
-        cards: new Array(9).fill(undefined)
+        cards: new Array(9).fill(new Object())
       },
-      equips: new Array(9).fill(undefined),
+      equips: new Array(9).fill(new Object()),
       allsrc: [],
       queue: [],
       util: [],
@@ -155,12 +196,32 @@ export default {
     this.initBoard()
   },
   mounted () {
-    this.fetchID = setInterval(this.fetchStatus, 500)
+    this.loadLocalUsers()
   },
   computed: {
     sortedRoomUsers () {
-      let users = this.entry.room.users
+      let users = this.room.users
       return users.sort((a,b) => a.hp - b.hp)
+    }
+  },
+  watch: {
+    state (new_val, old_val) {
+      if (new_val == 1) {
+        if (this.ws.room) {
+          this.ws.room.close()
+          this.ws.room = undefined
+        }
+        this.fetchRooms()
+      } else if (new_val == 2) {
+        if (this.ws.rooms) {
+          this.ws.rooms.close()
+          this.ws.rooms = undefined
+        }
+        this.fetchRoom()
+      } else if (new_val == 3) {
+        this.ws.room.close()
+        this.ws.room = undefined
+      }
     }
   },
   methods: {
@@ -168,13 +229,13 @@ export default {
       entry methods
       */
     getUserIndex (name) {
-      return this.entry.room.users.findIndex(v => v.name === name)
+      return this.room.users.findIndex(v => v.name === name)
     },
     getEnemyIndex () {
       return this.getUserIndex(this.game.enemy.name)
     },
     getMeIndex () {
-      return this.getUserIndex(this.entry.name)
+      return this.getUserIndex(this.username)
     },
     dealError (error) {
       bus.$emit('pop', error)
@@ -194,142 +255,153 @@ export default {
         }
         return json
       })
-      return new Promise((resolve, reject) => {
-        fetch(this.ip+route, {
-          body: formData,
-          method: 'POST',
-        }).then(res => res.json())
-        .then(json => {
-          if (json.err) {
-            this.dealError(json)
-            reject()
-          }
-          else {resolve(json)}
-        })
-      })
     },
-    emptyLoginInfo () {
-      if (this.name == '' || this.password == '') {
+    loadLocalUsers () {
+      this.local.users = localStorage.users == undefined ? {} : JSON.parse(localStorage.users)
+    },
+    saveLocalUser (n, p) {
+      let users = localStorage.users == undefined ? {} : JSON.parse(localStorage.users)
+      // called after login, this.user is assigned
+      users[this.user.id] = { username: n, password: p }
+      localStorage.users = JSON.stringify(users)
+    },
+    validate () {
+      if (this.username == '' || this.password == '') {
         this.dealError('empty username or password')
         return true
       }
     },
+    autoLogin (user) {
+      this.username = user.username
+      this.password = user.password
+      this.login()
+    },
     login () {
-      if (this.emptyLoginInfo()) return
-      let param = {name: this.name, password: this.password}
-      this.fetch('user/login', param).then(json => {
-        if (json.rooms) {
-          this.state = 1
-          this.rooms = json.rooms
-        } else if (json.room) {
+      if (this.validate()) return
+      let param = {name: this.username, password: this.password}
+      this.fetch('user/login', param).then(data => {
+        let user = data.user
+        if (user) this.user = user
+        this.saveLocalUser(this.username, this.password)
+        if (this.user.room != undefined) {
+          this.room.id = this.user.room
           this.state = 2
-          this.room = json.room
+        } else {
+          this.state = 1
         }
       })
     },
     signup () {
-      if (this.emptyLoginInfo()) return
-      let param = {name: this.name, password: this.password}
+      if (this.validate()) return
+      let param = {name: this.username, password: this.password}
       this.fetch('user/signup', param).then(json => {
         if (json.user) {
           this.dealError('register success! click login.')
         }
       })
     },
-    fetchStatus () {
-      if (this.entry.login) {
-        if (!this.entry.inroom) {
-          this.fetchRooms()
-        } else if (this.entry.inroom) {
-          this.fetchRoom()
-        }
+    fetchRooms () {
+      this.ws.rooms = new WebSocket(`${ this.ws.ip }room/list`)
+      this.ws.rooms.onmessage = e => {
+        this.rooms = JSON.parse(e.data)
       }
     },
-    fetchRooms () {
-      fetch(this.ip+'room/list').then(res => res.json()).then(json => {
-        this.entry.rooms = json
-      })
-    },
     fetchRoom () {
-      let param = {roomid: this.entry.room.id}
-      this.fetch('room', param).then(json => {
-        this.entry.room = json
-        if (json.start) {
-          this.entry.inentry = false
-          clearInterval(this.fetchID)
-          // this.fetchID = setInterval(this.fetchGameStatus, 2000)
-          this.$nextTick(this.startGame)
-        }
-      })
+      this.ws.room = new WebSocket(`${ this.ws.ip }room?rid=${ this.room.id }`)
+      this.ws.room.onmessage = e => {
+        this.room = JSON.parse(e.data)
+      }
     },
-    joinRoom (id) {
-      let param = {name: this.entry.name, roomid: id}
-      this.fetch('room/join', param).then(json => {
-        this.entry.inroom = true
-        this.entry.room = json
+    joinRoom (rid) {
+      let param = { rid: rid, uid: this.user.id }
+      this.fetch('room/join', param).then(data => {
+        this.state = 2
+        this.room = data.room
       })
     },
     exitRoom () {
-      let param = {name: this.entry.name, roomid: this.entry.room.id}
+      let param = { uid: this.user.id }
       this.fetch('room/exit', param).then(json => {
-        this.entry.inroom = false
-        this.entry.rooms = json
+        this.rooms = json.rooms
+        this.state = 1
       })
     },
     createRoom () {
-      let param = {name: this.entry.name}
-      this.fetch('room/create', param).then(json => {
-        this.entry.inroom = true
-        this.entry.room = json
+      let param = { uid: this.user.id }
+      this.fetch('room/create', param).then(data => {
+        this.state = 2
+        this.room = data.room
       })
     },
     startRoom () {
-      let param = {roomid: this.entry.room.id}
-      this.fetch('room/start', param)
-    },
-    fetchGameStatus () {
-      let param = {roomid: this.entry.room.id}
-      this.fetch('room', param).then(json => {
-        this.entry.room = json
-        let room = this.entry.room
-        this.deal()
-        this.updateGold()
-        this.updateExp()
-        // if game end, return to the room
-        if (room.start = false) {
-          this.entry.inentry = true
-        }
+      let param = { rid: this.room.id}
+      this.fetch('room/start', param).then(data => {
+        this.room = data.room
+        this.state = 3
+        this.$nextTick(this.initializeGame)
       })
     },
     /*
       game main thread
       */
-    startGame () {
-      this.w = document.documentElement.clientWidth*2
-      this.h = document.documentElement.clientHeight*2
+    initializeGame () {
+      // init board
+      this.w = this.$refs.canvas.offsetWidth * 2
+      this.h = this.$refs.canvas.offsetHeight * 2
+      // init size data
       let info = PosInfo.board
       this.xbase = this.w/2-6.5*info.ratio*info.w1,
-      this.ybase = info.marTop+info.h/2-3.75*info.w1,
-      this.canvas = document.getElementById('canvas')
-      this.ctx = this.canvas.getContext('2d')
+      this.ybase = info.h/2-3.75*info.w1
+      // init ctx
+      this.ctx = this.$refs.canvas.getContext('2d')
+      // start main thread
       this.main()
+      this.wsCard()
+      this.queue.push(this.actAll)
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
       this.equips[2] = new EquipInfo[0]()
-      this.queue.push(this.actAll)
+    },
+    wsCard () {
+      this.ws.card = new WebSocket(`${ this.ws.ip }game/card?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.card.onmessage = e => {
+        let card_ids = JSON.parse(e.data)
+        this.store.cards = []
+        for (let i in card_ids) {
+          this.store.cards.push(CardInfo[card_ids[i]])
+        }
+      }
+      // this.fetch('room', param).then(json => {
+      //   this.room = json
+      //   let room = this.room
+      //   this.deal()
+      //   this.updateGold()
+      //   this.updateExp()
+      //   // if game end, return to the room
+      //   if (room.start = false) {
+      //     // this.entry.inentry = true
+      //   }
+      // })
+    },
+    deal () {
+      this.ws.card.send('deal')
+      // for (let i = 0; i < 5; i++) {
+      //   let cardId = Math.floor(Math.random()*CardInfo.length)
+      //   this.store.cards[i] = CardInfo[cardId]
+      // }
     },
     main () {
       this.clearAll()
       this.drawBoard()
-      this.drawHand()
-      this.drawStore()
-      this.drawHold()
+      // this.drawHand()
+      // this.drawStore()
+      // this.drawHold()
       this.drawUtil()
-      this.drawDamageRecord()
-      this.drawclasses()
-      this.drawEquips()
-      this.drawSchedule()
-      this.drawPlayers()
+      // this.drawDamageRecord()
+      // this.drawclasses()
+      // this.drawEquips()
+      // this.drawSchedule()
+      // this.drawPlayers()
       this.drawDamageDisplay()
       for (let i in this.queue) {
         this.queue[i]()
@@ -344,7 +416,7 @@ export default {
       // preparing stage
       if (s.status === 'prepare') {
         if (s.p === 0) {
-          this.fetchGameStatus()
+          // this.fetchGameStatus()
         }
         else if (s.p < s.pn) {
         }
@@ -376,21 +448,21 @@ export default {
               data.equip.push(this.equips[i].id)
             }
           }
-          let param = {roomid: this.entry.room.id, name: this.entry.name, data: JSON.stringify(data)}
-          this.fetch('data/start', param).then(json => {
-            this.setChessByData(JSON.parse(json.data), 1)
-            this.game.enemy = json
-            this.game.damageRecord = []
-            this.game.schedule = {status: 'battle', p: 0, pn: 100000}
-            this.startRound()
-          })
+          let param = {roomid: this.room.id, name: this.username, data: JSON.stringify(data)}
+          // this.fetch('data/start', param).then(json => {
+          //   this.setChessByData(JSON.parse(json.data), 1)
+          //   this.game.enemy = json
+          //   this.game.damageRecord = []
+          //   this.game.schedule = {status: 'battle', p: 0, pn: 100000}
+          //   this.startRound()
+          // })
         }
         else if (s.p > s.pn) {
         }
         s.p ++
       } else if (s.status === 'battle') {
         if (s.p == s.pn) {
-          let param = {roomid: this.entry.room.id, name: this.entry.name, hp: this.game.hp}
+          let param = {roomid: this.room.id, name: this.username, hp: this.game.hp}
           this.fetch('data/end', param).then(json => {
             this.initBoard()
             this.setChessByData(JSON.parse(json.data), 0)
@@ -526,12 +598,6 @@ export default {
       this.game.gold += price
       this.hold = undefined
     },
-    deal () {
-      for (let i = 0; i < 5; i++) {
-        let cardId = Math.floor(Math.random()*CardInfo.length)
-        this.store.cards[i] = CardInfo[cardId]
-      }
-    },
     addExp (exp) {
       if (this.game.lvl >= 9) return false
       let require = upgradeExp[this.game.lvl-1]
@@ -564,14 +630,14 @@ export default {
     },
     updateGold () {
       let base = 5
-      if (this.entry.room.stage < 2) base = 2
-      else if (this.entry.room.stage < 4) base = parseInt(this.entry.room.stage)
+      if (this.room.stage < 2) base = 2
+      else if (this.room.stage < 4) base = parseInt(this.room.stage)
       let interest = Math.min(Math.floor(this.game.gold / 10), 5)
       let combo = Math.min(Math.floor(this.game.combo / 2), 3)
       this.game.gold += (base + interest + combo)
     },
     updateExp () {
-      if (this.entry.room.stage > 0) {
+      if (this.room.stage > 0) {
         this.addExp(2)
       }
     },
@@ -1315,17 +1381,16 @@ export default {
       let ctx = this.ctx
       let info = PosInfo.board
       let grid = this.board.grid
-      const bMarTop = info.marTop
       const bw = info.w
       const bh = info.h
       const w1 = info.w1
       const w2 = info.w2
       const ratio = info.ratio
       ctx.fillStyle = ColorInfo.board
-      ctx.fillRect(this.w/2-bw/2, bMarTop, bw, bh)
+      ctx.fillRect(this.w/2-bw/2, 0, bw, bh)
       for (let i in grid) {
-        let bias = i % 2 == 1 ? bias = ratio*w1/2 : -ratio*w1/2
-        let cenT = bh/2+bMarTop+(i-2.5)*1.5*w1
+        let bias = i % 2 == 1 ? ratio*w1/2 : -ratio*w1/2
+        let cenT = bh/2+(i-2.5)*1.5*w1
         for (let j in this.board.grid[i]) {
           let cenL = this.w/2+(j-3)*ratio*2*w1+bias
           // grid
@@ -1572,13 +1637,13 @@ export default {
       }
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(this.entry.room.stage, this.w/2, info.t)
+      ctx.fillText(this.room.stage, this.w/2, info.t)
     },
     drawPlayers () {
       let ctx = this.ctx
       let info = PosInfo.player
-      for (let i in this.entry.room.users) {
-        let user = this.entry.room.users[i]
+      for (let i in this.room.users) {
+        let user = this.room.users[i]
         ctx.fillText(user.hp, this.w/2+info.l, info.t+info.sph*i)
         ctx.fillText(user.name, this.w/2+info.l+info.spw, info.t+info.sph*i)
       }
@@ -1594,103 +1659,22 @@ export default {
 </script>
 
 <style lang="scss">
-html {
-  height: 100%;
-}
-body {
-  margin: 0;
-  height: 100%;
-}
-#app {
-  position: relative;
-  font-family: Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  height: 100%;
-  text-align: center;
-  color: #2c3e50;
-}
-input {
-  margin-bottom: 1rem;
-  padding: .375rem 1rem;
-  height: 1rem;
-  border: none;
-  border-bottom: #eee 1px solid;
-  font-family: Hiragino Sans GB, Helvetica, Arial,sans-serif;
-  outline: none;
-  transition: .3s linear;
-  &:hover, &:focus {
-    border-bottom: #aaa 1px solid;
-  }
-}
-button {
-  display: block;
-  margin-bottom: 1rem;
-  width: 10rem;
-  height: 2rem;
-  outline: none;
-  border: #eee 1px solid;
-  cursor: pointer;
-  transition: .3s ease-in-out;
-  &:hover {
-    border: #bbb 1px solid;
-  }
-}
-.entry {
-  height: 100%;
-  text-align: left;
-  .block {
-    padding: 3rem 2rem 0 2rem;
-    text-align: center;
-    .userinfo {
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
-      text-align: left;
-      border-bottom: 1px solid #ccc;
-      .name {
-        color: green;
-        font-weight: bold;
-      }
-    }
-  }
-  .login {
-    input, button {
-      display: block;
-      margin: 0 auto 1rem auto;
-    }
-  }
-  .actions {
-    display: flex;
-    button {
-      flex: 0 0 auto;
-      margin-right: 1rem;
-    }
-  }
-  .list {
-    text-align: left;
-    .head {
-      padding: .5rem 0;
-      border-bottom: 1px solid #eee;
-    }
-    .item {
-      padding: 2rem;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      &:hover {
-        background-color: #fafafa;
-      }
-      span {
-        margin-right: 2rem;
-      }
-      .span-right {
-        float: right;
-      }
-    }
-    .disable {
-      background-color: #eee;
-    }
-  }
-}
+// html {
+//   height: 100%;
+// }
+// body {
+//   margin: 0;
+//   height: 100%;
+// }
+// #app {
+//   position: relative;
+//   font-family: Helvetica, Arial, sans-serif;
+//   -webkit-font-smoothing: antialiased;
+//   -moz-osx-font-smoothing: grayscale;
+//   height: 100%;
+//   text-align: center;
+//   color: #2c3e50;
+// }
 .game {
   height: 100%;
 }

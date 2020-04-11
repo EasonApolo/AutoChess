@@ -895,7 +895,7 @@ export default [
       super(vm)
       this.id = 0,
       this._name = '麦林炮手',
-      this.src = 'Tristana_d.png',
+      this.src = 'Tristana.png',
       this.cat = [0, 1],
       this.lvl = lvl
       this.size_base = [0.65, 0.8, 0.95]
@@ -934,7 +934,7 @@ export default [
       super(vm)
       this.id = 1,
       this._name = '圣枪游侠',
-      this.src = 'Lucian_d.png',
+      this.src = 'Lucian.png',
       this.cat = [0, 2],
       this.lvl = lvl
       this.size_base = [0.65, 0.8, 0.95]
@@ -985,7 +985,7 @@ export default [
       super(vm)
       this.id = 2,
       this._name = '疾风剑豪',
-      this.src = 'Yasuo_d.png',
+      this.src = 'Yasuo.png',
       this.cat = [3, 4],
       this.lvl = lvl
       this.size_base = [0.65, 0.8, 0.95]
@@ -1039,7 +1039,7 @@ export default [
       super(vm)
       this.id = 3,
       this._name = '法外狂徒',
-      this.src = 'Graves_d.png',
+      this.src = 'Graves.png',
       this.cat = [0, 5],
       this.lvl = lvl
       this.size_base = [0.65, 0.8, 0.95]
