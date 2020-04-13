@@ -13,6 +13,18 @@ app.use(multer)
 
 var rooms = []
 var users = []
+/*
+    game: {
+        pool: [[]*n]*5,
+        users: {
+            id: {
+                gold: int,
+                exp: int,
+                store: []*5
+            }
+        }
+    }
+*/
 var games = {}
 
 
@@ -148,7 +160,7 @@ app.post('/room/exit', (req, res) => {
         if (room.users.length <= 0) {
             let index = rooms.findIndex(r => r.id == room.id)
             rooms.splice(index, 1)
-            log(`DESTROY: ${ room.id } is destroyed for no user`)
+            log(`DESTROY: ${ room.id } destroyed for NO USER`)
         }
     }
     json({ rooms: rooms }, res)
@@ -156,6 +168,7 @@ app.post('/room/exit', (req, res) => {
 app.ws('/room/list', (ws, req) => {
     let send = () => ws.send(JSON.stringify(rooms))
     let interval = setInterval(send, 1000)
+    ws.onmessage = send
     ws.onclose = () => {
         clearInterval(interval)
     }
@@ -165,6 +178,7 @@ app.ws('/room', (ws, req) => {
     let room = getRoom(rid)
     let send = () => ws.send(JSON.stringify(room))
     let interval = setInterval(send, 1000)
+    ws.onmessage = send
     ws.onclose = () => clearInterval(interval)
 })
 
@@ -205,15 +219,16 @@ function drawFromWhichLvl (lvl) {
         if (v < 0) return i
     }
 }
+// game.store: [id|null]*5
 app.ws('/game/card', (ws, req) => {
     let { rid, uid } = req.query
     const N_DRAW = 5
     let game = games[rid], pool = game.pool, g_user = game.users[uid]
     let send = wsSend(ws)
     let putback = (cards) => {
-        for (let i in cards) {
-            pool[cards[i].lvl].push(cards[i].id)
-        }
+        cards.map(c => {
+            if (c.id) pool[c.lvl].push(c.id)
+        })
     }
     let drawCards = () => {
         let drawn_all = new Array()
@@ -224,13 +239,14 @@ app.ws('/game/card', (ws, req) => {
         }
         return drawn_all
     }
+    // data = { id: cardId, lvl: 0-4 }
     ws.onmessage = e => {
         let data = JSON.parse(e.data)
         if (data.type == 'deal') {
             putback(data.cards)
             let drawn = drawCards()
             g_user.store = drawn
-            log(`DRAW: game ${ rid }, user ${ uid }, draw`, drawn, 'left', pool.map(v => v.length))
+            log(`CARD: game ${ rid } | user ${ uid } DEAL`, drawn, 'game.pool now', pool.map(v => v.length))
             send(drawn)
         } else if (data.type == 'init') {
             let drawn, re = false
@@ -242,11 +258,32 @@ app.ws('/game/card', (ws, req) => {
                 drawn = drawCards()
                 g_user.store = drawn
             }
-            log(`DRAW: game ${ rid }, user ${ uid }, ${ re ? 're-' : '' }init`, drawn, 'left', pool.map(v => v.length))
+            log(`CARD: game ${ rid } | user ${ uid } ${ re ? 'RE-' : '' }INIT with`, drawn, 'game.pool now', pool.map(v => v.length))
             send(drawn)
+        } else if (data.type == 'buy') {
+            g_user.store = data.cards.map(card => {
+                return card.id == undefined ? null : card.id
+            })
+            log(`CARD: game ${ rid } | user ${ uid } BUY g_user.store now: `, g_user.store)
         }
     }
-    log(`DEAL: room ${ rid } | user ${ uid } established`)
+    log(`CARD: room ${ rid } | user ${ uid } ESTABLISHED`)
+})
+app.ws('/game/gold', (ws, req) => {
+    let { rid, uid } = req.query
+    const INIT_GOLD = 10
+    let game = games[rid], g_user = game.users[uid]
+    ws.onmessage = e => {
+        if (e.data == 'init') {
+            let initGold = g_user.gold == undefined ? INIT_GOLD : g_user.gold
+            log(`GOLD: room ${ rid } | user ${ uid } INIT with ${ initGold }`)
+            ws.send(initGold)
+        } else {
+            g_user.gold = e.data
+            log(`GOLD: room ${ rid } | user ${ uid } UPDATE to ${ g_user.gold }`)
+        }
+    }
+    log(`GOLD: room ${ rid } | user ${ uid } ESTABLISHED`)
 })
 
 
@@ -270,7 +307,7 @@ app.post('/room/start', (req, res) => {
     if (room) {
         room.stage = 1
         let f_init_users = (obj, u) => {
-            obj[u.id] = { lvl: 1, exp: 0, gold: 2, hp: 100 }
+            obj[u.id] = { lvl: 1, hp: 100 }
             return obj
         }
         let new_game = { pool: getCards(), users: room.users.reduce(f_init_users, {}) }

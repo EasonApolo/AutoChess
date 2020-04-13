@@ -57,10 +57,14 @@
       <!-- store -->
       <v-card class='d-flex mx-auto pa-2 ' width='39.5rem' style='position:absolute;bottom:.5rem;left:0;right:0'>
         <div class=''>
-          <v-btn class='d-block mb-2' width='6rem' color='secondary' @click='deal'>deal</v-btn>
-          <v-btn class='d-block' width='6rem'>level{{game.lvl}}</v-btn>
+          <v-btn small class='d-block mb-1' width='6rem' color='secondary' @click='deal'>deal</v-btn>
+          <v-btn small class='d-block' width='6rem'>level{{game.lvl}}</v-btn>
+          <div class='mt-1'>
+            <v-chip class='mr-1' color='yellow darken-4' text-color='white' small>{{this.game.gold}}</v-chip>
+            <v-chip color='red darken-4' text-color='white' small>{{this.game.exp}}</v-chip>
+          </div>
         </div>
-        <v-card class='ml-2' width='6rem' v-for='(c, index) in store.cards' :key='index'>
+        <v-card class='ml-2' width='6rem' v-for='(c, index) in store.cards' :key='index' @click='buyCard(index)'>
           <img v-if='c.src' class='d-block' width='100%' :src='c.src'>
           <v-sheet v-else width='100%' height='6rem'></v-sheet>
         </v-card>
@@ -68,8 +72,8 @@
 
       <!-- hand -->
       <v-card class='d-flex mx-auto pa-2 pl-0 justify-space-around' width='59rem' style='position:absolute;bottom:8rem;left:0;right:0'>
-        <v-card class='ml-2' width='6rem' v-for='c in hand.cards' :key='c.id'>
-          <img v-if='c.src' class='d-block' width='100%' src='Varus.png'>
+        <v-card class='ml-2' width='6rem' v-for='(c, index) in hand.cards' :key='index'>
+          <img v-if='c.src' class='d-block' width='100%' :src='c.src'>
           <v-sheet v-else width='100%' height='6rem'></v-sheet>
         </v-card>
       </v-card>
@@ -82,9 +86,9 @@
         </v-card>
       </v-card>
 
-      <div v-for='src in allsrc' :key='src' style='display:none'>
-        <img :src='src'>
-      </div>
+      <!-- hold -->
+      <v-card></v-card>
+
       <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
         {{showChess.name}}
         <div class='attr'>
@@ -102,6 +106,10 @@
           </div>
         </div>
       </v-card>
+
+      <div v-for='src in allsrc' :key='src' style='display:none'>
+        <img :src='src'>
+      </div>
     </div>
   </v-app>
 </template>
@@ -135,7 +143,7 @@ export default {
       room: {},
       rooms: [],
       ws: {
-        ip: `ws://localhost:81/`,
+        ip: `ws://192.168.1.2:81/`,
         rooms: undefined,
         room: undefined,
         card: undefined,
@@ -182,7 +190,7 @@ export default {
       showChess: undefined,
       showPos: undefined,
       // ip: 'http://47.106.171.107:80/',
-      ip: 'http://localhost:81/',
+      ip: 'http://192.168.1.2:81/',
     }
   },
   components: {
@@ -229,6 +237,9 @@ export default {
         this.state = 3
         this.$nextTick(this.initializeGame)
       }
+    },
+    'game.gold': function (new_val, old_val) {
+      this.ws.gold.send(new_val)
     }
   },
   methods: {
@@ -309,12 +320,14 @@ export default {
     },
     fetchRooms () {
       this.ws.rooms = new WebSocket(`${ this.ws.ip }room/list`)
+      this.ws.rooms.onopen = () => this.ws.rooms.send('immediate')
       this.ws.rooms.onmessage = e => {
         this.rooms = JSON.parse(e.data)
       }
     },
     fetchRoom () {
       this.ws.room = new WebSocket(`${ this.ws.ip }room?rid=${ this.room.id }`)
+      this.ws.room.onopen = () => this.ws.room.send('immediate')
       this.ws.room.onmessage = e => {
         this.room = JSON.parse(e.data)
       }
@@ -364,11 +377,28 @@ export default {
       // start main thread
       this.main()
       this.wsCard()
+      this.wsGold()
       this.queue.push(this.actAll)
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
       this.equips[2] = new EquipInfo[0]()
     },
+    wsGold () {
+      this.ws.gold = new WebSocket(`${ this.ws.ip }game/gold?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.gold.onopen = () => {
+        this.ws.gold.send('init')
+      }
+      this.ws.gold.onmessage = e => { // in initialization, server returns init gold
+        let syncGold = parseInt(e.data)
+        if (!isNaN(syncGold)) {
+          this.game.gold = syncGold
+        }
+      }
+    },
+    wsExp () {
+      this.ws.gold = new WebSocket(`${ this.ws.ip }game/exp?rid=${ this.room.id }&uid=${ this.user.id }`)
+    },
+    // Store functions
     wsCard () {
       this.ws.card = new WebSocket(`${ this.ws.ip }game/card?rid=${ this.room.id }&uid=${ this.user.id }`)
       this.ws.card.onopen = () => {
@@ -376,32 +406,39 @@ export default {
       }
       this.ws.card.onmessage = e => {
         let card_ids = JSON.parse(e.data)
-        this.store.cards = []
-        for (let i in card_ids) {
-          this.store.cards.push(CardInfo[card_ids[i]])
-        }
+        this.store.cards = card_ids.map(id => {
+          return id == null ? {} : CardInfo[id]
+        })
       }
-      // this.fetch('room', param).then(json => {
-      //   this.room = json
-      //   let room = this.room
-      //   this.deal()
-      //   this.updateGold()
-      //   this.updateExp()
-      //   // if game end, return to the room
-      //   if (room.start = false) {
-      //     // this.entry.inentry = true
-      //   }
-      // })
-    },
-    deal () {
-      this.syncStore('deal')
     },
     syncStore (type) {
       let current = this.store.cards
-        .filter(v => v.id != undefined)
-        .map(c => ({ id: c.id, lvl: c.cost-1 }))   // cost from 1, card lvl from 0
+        .map(c => ({ id: c.id, lvl: c.cost-1 }))   // cost from 1, card lvl from 0, do transformation
       let data = { type: type, cards: current}
       this.ws.card.send(JSON.stringify(data))
+    },
+    deal () {
+      if (this.game.gold < 2) {
+        this.dealError('More Gold is Required~')
+        return
+      }
+      this.game.gold -= 2
+      this.syncStore('deal')
+    },
+    buyCard(index) {
+      let wannaBuy = this.store.cards[index]
+      if (this.game.gold < wannaBuy.cost) {
+        this.dealError('More Gold is Required~')
+        return
+      }
+      // click empty card
+      if (this.store.cards[index].id == undefined) return
+      // if able to buy
+      if (this.addChess(wannaBuy.id)) {
+        this.store.cards[index] = {}
+        this.game.gold -= wannaBuy.cost
+        this.syncStore('buy')
+      }
     },
     main () {
       this.clearAll()
@@ -632,13 +669,6 @@ export default {
         if (this.addExp(this.game.costUpgrade)) {
           this.game.gold -= this.game.costUpgrade
         }
-      }
-    },
-    buyCard(storeId) {
-      let wannaBuy = this.store.cards[storeId]
-      if (this.game.gold >= wannaBuy.cost && this.addChess(wannaBuy.id)) {
-        this.store.cards[storeId] = undefined
-        this.game.gold -= wannaBuy.cost
       }
     },
     updateGold () {
@@ -1348,7 +1378,7 @@ export default {
       // hand free
       else {
         for (let i in cards) {
-          if (cards[i] === undefined) {
+          if (cards[i].id == undefined) {
             cards[i] = this.createChess(cardId, 0, 0)
             if (this.allsrc.indexOf(cards[i].src) < 0) {
               this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
