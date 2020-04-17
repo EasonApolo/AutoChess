@@ -46,7 +46,7 @@ export default [
     equipTo (chess) {
       this.chess = chess
       let buff0 = new buff_val(this.vm, this.chess, 'as', 0.2, 1, '攻速_反曲之弓')
-      this.buffs = [buff0, buff1]
+      this.buffs = [buff0]
       this.chess.buff = this.chess.buff.concat(this.buffs)
     }
   }

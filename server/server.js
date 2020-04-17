@@ -285,6 +285,47 @@ app.ws('/game/gold', (ws, req) => {
     }
     log(`GOLD: room ${ rid } | user ${ uid } ESTABLISHED`)
 })
+app.ws('/game/chess', (ws, req) => {
+    let { rid, uid } = req.query
+    let game = games[rid], g_user = game.users[uid]
+    let send = wsSend(ws)
+    ws.onmessage = e => {
+        let data = JSON.parse(e.data)
+        if (data.type == 'update') {
+            g_user.hand = data.hand
+            g_user.board = data.board
+            log(`CHESS: room ${ rid } | user ${ uid } UPDATE hand ${ data.hand.reduce((n,c)=>n+(c!=null),0) }`)
+        } else if (data.type == 'init') {
+            if (g_user.hand && g_user.board) {
+                send({ hand: g_user.hand, board: g_user.board })
+                log(`CHESS: room ${ rid } | user ${ uid } REINIT hand ${ g_user.hand.reduce((n,c)=>n+(c!=null),0) }`)
+            }
+        }
+    }
+})
+app.ws('/game/exp', (ws, req) => {
+    let { rid, uid } = req.query
+    let game = games[rid], g_user = game.users[uid]
+    let send = wsSend(ws)
+    ws.onmessage = e => {
+        let data = JSON.parse(e.data)
+        if (data.type == 'update') {
+            g_user.exp = data.exp
+            g_user.lvl = data.lvl
+            log(`CHESS: room ${ rid } | user ${ uid } UPDATE lvl ${ g_user.lvl } | exp ${ g_user.exp }`)
+        } else if (data.type == 'init') {
+            let flag_re = false
+            if (g_user.exp != undefined && g_user.lvl != undefined) {
+                flag_re = true
+                send({ exp: g_user.exp, lvl: g_user.lvl })
+            } else {
+                g_user.exp = data.exp
+                g_user.lvl = data.lvl
+            }
+            log(`EXP: room ${ rid } | user ${ uid } ${ flag_re ? 'RE' : '' }INIT lvl ${ g_user.lvl } | exp ${ g_user.exp }`)
+        }
+    }
+})
 
 
 /*

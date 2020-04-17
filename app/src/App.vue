@@ -51,7 +51,7 @@
 
     <div v-else-if='state == 3' class='game' style='position:relative'>
       <v-card class='mx-auto' style='position:absolute;bottom:15.5rem;left:0;right:0' width='750px' height='550px' ref='container'>
-        <canvas ref='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='click' @mousemove="mousemove"></canvas>
+        <canvas ref='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='clickBoard'></canvas>
       </v-card>
 
       <!-- store -->
@@ -72,22 +72,27 @@
 
       <!-- hand -->
       <v-card class='d-flex mx-auto pa-2 pl-0 justify-space-around' width='59rem' style='position:absolute;bottom:8rem;left:0;right:0'>
-        <v-card class='ml-2' width='6rem' v-for='(c, index) in hand.cards' :key='index'>
+        <v-card class='ml-2' width='6rem' v-for='(c, index) in hand.cards' :key='index' @click='clickHand(c, index)'>
           <img v-if='c.src' class='d-block' width='100%' :src='c.src'>
           <v-sheet v-else width='100%' height='6rem'></v-sheet>
+          <div v-if='c.equips' class='d-flex' style='position:absolute;bottom:0;left:0'>
+            <img class='d-block' width='24rem' v-for="(e, idx) in c.equips" :key='idx' :src='e.src'>
+          </div>
         </v-card>
       </v-card>
 
       <!-- equip -->
-      <v-card class='d-flex pa-2 pb-0 mx-auto flex-column justify-space-around' style='position:absolute;bottom:15.5rem;left:4rem'>
-        <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index'>
-          <img v-if='e.src' class='d-block' width='100%' src='RecurveBow.png'>
+      <v-card class='d-flex pa-2 pb-0 mx-auto flex-column justify-space-around' style='position:absolute;bottom:15.5rem;left:4rem;width:9rem;'>
+        <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index' @click='clickEquip(e, index)'>
+          <img v-if='e.src' class='d-block' width='100%' :src='e.src'>
           <v-sheet v-else width='100%' height='3rem'></v-sheet>
         </v-card>
       </v-card>
 
       <!-- hold -->
-      <v-card></v-card>
+      <v-card class='' style='position:absolute;pointer-events:none' width='6rem' :style='{left:holdX,top:holdY,width:holdWidth}'>
+        <img v-if='hold' class='d-block' width='100%' :src='hold.src'>
+      </v-card>
 
       <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
         {{showChess.name}}
@@ -147,6 +152,7 @@ export default {
         rooms: undefined,
         room: undefined,
         card: undefined,
+        chess: undefined,
       },
       fetchID: undefined,
       canvas: undefined,
@@ -170,7 +176,6 @@ export default {
         schedule: {},
         hp: 100,
         enemy: undefined,
-        clickBoard: true,
         combo: 0,
       },
       hold: undefined,
@@ -198,8 +203,8 @@ export default {
   },
   created () {
     addEventListener('mousemove', e => {
-      this.mouse.x = e.clientX * 2
-      this.mouse.y = e.clientY * 2
+      this.mouse.x = e.clientX
+      this.mouse.y = e.clientY
     })
     this.initBoard()
   },
@@ -210,6 +215,15 @@ export default {
     sortedRoomUsers () {
       let users = this.room.users
       return users.sort((a,b) => a.hp - b.hp)
+    },
+    holdX () {
+      return `${ this.mouse.x - 3*16 }px`
+    },
+    holdY () {
+      return `${ this.mouse.y - 3*16 }px`
+    },
+    holdWidth () {
+      return this.hold instanceof equip ? '3rem' : '6rem'
     }
   },
   watch: {
@@ -232,7 +246,7 @@ export default {
       }
     },
     'room.stage': function (new_val, old_val) {
-      // other player started game
+      // auto start game
       if (new_val == 1 && this.state != 3) {
         this.state = 3
         this.$nextTick(this.initializeGame)
@@ -240,6 +254,12 @@ export default {
     },
     'game.gold': function (new_val, old_val) {
       this.ws.gold.send(new_val)
+    },
+    'game.exp': function (new_val, old_val) {
+      this.syncExp('update')
+    },
+    'game.lvl': function (new_val, old_val) {
+      this.syncExp('update')
     }
   },
   methods: {
@@ -378,11 +398,15 @@ export default {
       this.main()
       this.wsCard()
       this.wsGold()
+      this.wsChess()
+      this.wsExp()
       this.queue.push(this.actAll)
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
-      this.equips[2] = new EquipInfo[0]()
+      this.equips[2] = new EquipInfo[1]()
+      this.equips[3] = new EquipInfo[1]()
     },
+    // Gold and Exp
     wsGold () {
       this.ws.gold = new WebSocket(`${ this.ws.ip }game/gold?rid=${ this.room.id }&uid=${ this.user.id }`)
       this.ws.gold.onopen = () => {
@@ -396,7 +420,54 @@ export default {
       }
     },
     wsExp () {
-      this.ws.gold = new WebSocket(`${ this.ws.ip }game/exp?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.exp = new WebSocket(`${ this.ws.ip }game/exp?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.exp.onopen = () => { this.syncExp('init') }
+      this.ws.exp.onmessage = e => {
+        let { exp, lvl } = JSON.parse(e.data)
+        if (exp != undefined || lvl != undefined) {
+          [this.game.exp, this.game.lvl] = [exp, lvl]
+        }
+      }
+    },
+    syncExp (type) {
+      let data = { type: type, exp: this.game.exp, lvl: this.game.lvl }
+      this.ws.exp.send(JSON.stringify(data))
+    },
+    // chess
+    wsChess () {
+      this.ws.chess = new WebSocket(`${ this.ws.ip }game/chess?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.chess.onopen = () => { this.syncChess('init') }
+      this.ws.chess.onmessage = e => {
+        let { hand, board } = JSON.parse(e.data)
+        hand.map((c, idx) => {
+          if (c != null) {
+            this.hand.cards.splice(idx, 1, this.createChess(c.id, 0, c.lvl))
+          }
+        })
+        board.map((row, y) => row.map((g, x) => {
+          if (g != null) {
+            let newChess = this.createChess(g.id, 0, g.lvl)
+            this.setChess(y, x, newChess)
+          }
+        }))
+      }
+    },
+    syncChess (type) {
+      let data
+      if (type == 'init') {
+        data = { type: type }
+      } else {
+        let board = this.board.grid.map(
+          row => row.map(
+            g => g != undefined ? { id: g.id, lvl: g.lvl } : null
+          )
+        )
+        let hand = this.hand.cards.map(
+          c => c.id ? { id: c.id, lvl: c.lvl } : null
+        )
+        data = { type: type, board: board, hand: hand }
+      }
+      this.ws.chess.send(JSON.stringify(data))
     },
     // Store functions
     wsCard () {
@@ -419,7 +490,7 @@ export default {
     },
     deal () {
       if (this.game.gold < 2) {
-        this.dealError('More Gold is Required~')
+        this.dealError('More Gold is Required')
         return
       }
       this.game.gold -= 2
@@ -428,7 +499,7 @@ export default {
     buyCard(index) {
       let wannaBuy = this.store.cards[index]
       if (this.game.gold < wannaBuy.cost) {
-        this.dealError('More Gold is Required~')
+        this.dealError('More Gold is Required')
         return
       }
       // click empty card
@@ -438,6 +509,196 @@ export default {
         this.store.cards[index] = {}
         this.game.gold -= wannaBuy.cost
         this.syncStore('buy')
+      }
+    },
+    // click events
+    clickEquip (e, index) {
+      if (this.hold instanceof chess) return
+      if (this.hold instanceof equip ) {
+        this.hold.hold = undefined
+        if (this.equips[index].id == undefined) {
+          this.equips[index] = this.hold
+          this.hold = undefined
+        } else {
+          let tmp = this.hold
+          this.hold = this.equips[index]
+          this.hold.hold = { type: 'equip', id: index }
+          this.equips[index] = tmp
+        }
+      } else {
+        this.hold = this.equips[index]
+        this.hold.hold = { type: 'equip', id: index }
+        this.equips[index] = {}
+      }
+    },
+    clickBoard (e) {
+      let cx = e.offsetX * 2, cy = e.offsetY * 2
+      let pos = this.getPosByCoord (cx, cy)
+      if (pos == undefined) return
+      else {
+        let [y, x] = pos
+        let grids = this.board.grid
+        if (grids[y][x] == undefined && this.hold instanceof chess) {
+          this.hold.hold = undefined
+          grids[y][x] = this.hold
+          this.hold = undefined
+        } else if (grids[y][x] instanceof chess) {
+          if (this.hold == undefined) {
+            this.hold = grids[y][x]
+            this.hold.hold = { type: 'board', pos: [y, x] }
+            grids[y][x] = undefined
+          } else if (this.hold instanceof chess) {
+            let tmp = this.hold
+            this.hold.hold = undefined
+            this.hold = grids[y][x]
+            this.hold.hold = { type: 'board', pos: [y, x] }
+            grids[y][x] = tmp
+          } else if (this.hold instanceof equip) {
+            this.hold.hold = undefined
+            this.equiping(grids[y][x])
+          }
+        }
+      }
+    },
+    clickHand (c, index) {
+      if (c.id == undefined) {
+        if (this.hold == undefined) return
+        else if (this.hold instanceof chess) {
+          this.hold.hold = undefined
+          this.hand.cards[index] = this.hold
+          this.hold = undefined
+        }
+      }
+      else if (c instanceof chess) {
+        if (this.hold == undefined) {
+          c.hold = { type: 'hand', id: index }
+          this.hold = c
+          this.hand.cards[index] = {}
+        }
+        else if (this.hold instanceof chess) {
+          this.hold.hold = undefined
+          this.hand.cards[index].hold = { type: 'hand', id: index }
+          this.hand.cards[index] = this.hold
+          this.hold = c
+        } else if (this.hold instanceof equip) {
+          this.hold.hold = undefined
+          this.equiping(c)
+        }
+      }
+      // swap
+    },
+    setGrid (i, j, chess) {
+      if (chess !== undefined) {  // if undefined is set to this grid
+        chess.pos = [i, j]
+      }
+      this.board.grid[i][j] = chess
+    },
+    setChess (r, c, chess=undefined) {
+      let grid = this.board.grid
+      // camp=0 friend, camp=1 opponent
+      if (chess === undefined) {  // swap hold and grid[i][j]
+        if (r <= 2) return        // cannot set at j<=2
+        if (this.hold && !grid[r][c]) { // the only way chesses on board may increase
+          let num = 0
+          for (let i in grid) {
+            for (let j in grid[i]) {
+              if (grid[i][j] && grid[i][j].camp==0) {
+                num++
+              }
+            }
+          }
+          if (num >= this.game.lvl) return
+        }
+        let tmp = this.hold
+        this.hold = grid[r][c]
+        this.setGrid(r, c, tmp)
+      } else {  // system auto set
+        this.setGrid(r, c, chess)
+      }
+    },
+    addChess (cardId) {
+      let cards = this.hand.cards
+      let grids = this.board.grid
+      // enough to upgrade ?
+      let count = [[], [], []]
+      let flag_upgrade = false
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (grids[r][c] && grids[r][c].id === cardId) {
+            count[grids[r][c].lvl].push([r,c])
+          }
+        }
+      }
+      for (let i in cards) {
+        if (cards[i] && cards[i].id === cardId) {
+          count[cards[i].lvl].push(i)
+        }
+      }
+      // upgrade
+      for (let i = 0; i < 2; i++) {
+        if ((i === 0 && count[i].length === 2) || (i === 1 && count[i].length === 3)) {
+          flag_upgrade = true
+          for (let j in count[i]) {
+            let pos = count[i][j]
+            let chess = j == 0 ? this.createChess(cardId, 0, i+1) : undefined
+            if (pos.length === 2) {
+              this.setChess(pos[0], pos[1], chess)
+            } else {
+              cards[pos] = chess
+            }
+          }
+          count[i+1].push(count[i][0])
+        }
+      }
+      if (flag_upgrade) return true
+      // hand free
+      else {
+        for (let i in cards) {
+          if (cards[i].id == undefined) {
+            cards[i] = this.createChess(cardId, 0, 0)
+            this.syncChess('update')
+            if (this.allsrc.indexOf(cards[i].src) < 0) {
+              this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
+            }
+            return true
+          }
+        }
+      }
+      // no where to put new chess
+      return false
+    },
+    createChess (id, camp, lvl) {
+      let obj = new ChessInfo[id](this, lvl)
+      obj.hold = false         // init hold
+      obj.pos = undefined
+      obj._dodge = 0
+      obj.status = {}
+      obj.camp = camp
+      obj.equips = []
+      return obj
+    },
+    getMergedEquip (id1, id2) {
+      return merge_map[id1][id2] ?? merge_map[id2][id1]
+    },
+    equiping (chess) {
+      if (chess && this.hold instanceof equip) {
+        // merge
+        if (this.hold.lvl == 0 && chess.equips?.length > 0) {
+          for (let i in chess.equips) {
+            let e = chess.equips[i]
+            if (e.lvl == 0) {
+              let mergedId = this.getMergedEquip(e.id, this.hold.id)
+              chess.unequip(i)
+              chess.equip(new EquipInfo[mergedId]())
+              this.hold = undefined
+              return
+            }
+          }
+        }
+        // else
+        this.hold.hold = undefined
+        chess.equip(this.hold)
+        this.hold = undefined
       }
     },
     main () {
@@ -799,22 +1060,6 @@ export default {
         }
       }
     },
-    getLvl1EquipId (id1, id2) {
-      return merge_map[id1][id2] || merge_map[id2][id1]
-    },
-    equiping (chess) {
-      if (chess && this.hold instanceof equip) {
-        if (chess.equips.length > 0 
-        && chess.equips[chess.equips.length - 1].lvl===1 && this.hold.lvl===1) {
-          let eid = this.getLvl1EquipId(chess.equips[chess.equips.length - 1].id, this.hold.id)
-          chess.unequip(chess.equips.length - 1)
-          chess.equip(new EquipInfo[eid]())
-        }
-        if (chess.equip(this.hold)) {
-          this.hold = undefined
-        }
-      }
-    },
     moveChessOnce (chess, tgt) {
       let src = chess.pos
       let grids = this.board.grid
@@ -1068,10 +1313,10 @@ export default {
     },
     getPosByCoord (x, y) {
       let info = PosInfo.board
-      if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>info.marTop && y<info.marTop+info.h) {
+      if (x>this.w/2-info.w/2 && x<this.w/2+info.w/2 && y>0 && y<info.h) {
         // x,y relative position to board centre
         let rx = x-this.w/2
-        let ry = y-(info.h/2+info.marTop)
+        let ry = y-(info.h/2)
         let w = info.w1
         let k = Math.tan(Math.PI/6)
         let ratio = info.ratio
@@ -1310,95 +1555,6 @@ export default {
         nearest = numberize(nearest)
       }
       return [nearest, minDis]
-    },
-    setGrid (i, j, chess) {
-      if (chess !== undefined) {  // if undefined is set to this grid
-        chess.pos = [i, j]
-      }
-      this.board.grid[i][j] = chess
-    },
-    setChess (r, c, chess=undefined) {
-      let grid = this.board.grid
-      // camp=0 friend, camp=1 opponent
-      if (chess === undefined) {  // swap hold and grid[i][j]
-        if (r <= 2) return        // cannot set at j<=2
-        if (this.hold && !grid[r][c]) { // the only way chesses on board may increase
-          let num = 0
-          for (let i in grid) {
-            for (let j in grid[i]) {
-              if (grid[i][j] && grid[i][j].camp==0) {
-                num++
-              }
-            }
-          }
-          if (num >= this.game.lvl) return
-        }
-        let tmp = this.hold
-        this.hold = grid[r][c]
-        this.setGrid(r, c, tmp)
-      } else {  // system auto set
-        this.setGrid(r, c, chess)
-      }
-    },
-    addChess (cardId) {
-      let cards = this.hand.cards
-      let grids = this.board.grid
-      // enough to upgrade ?
-      let count = [[], [], []]
-      let flag_upgrade = false
-      for (let r in grids) {
-        for (let c in grids[r]) {
-          if (grids[r][c] && grids[r][c].id === cardId) {
-            count[grids[r][c].lvl].push([r,c])
-          }
-        }
-      }
-      for (let i in cards) {
-        if (cards[i] && cards[i].id === cardId) {
-          count[cards[i].lvl].push(i)
-        }
-      }
-      // upgrade
-      for (let i = 0; i < 2; i++) {
-        if ((i === 0 && count[i].length === 2) || (i === 1 && count[i].length === 3)) {
-          flag_upgrade = true
-          for (let j in count[i]) {
-            let pos = count[i][j]
-            let chess = j == 0 ? this.createChess(cardId, 0, i+1) : undefined
-            if (pos.length === 2) {
-              this.setChess(pos[0], pos[1], chess)
-            } else {
-              cards[pos] = chess
-            }
-          }
-          count[i+1].push(count[i][0])
-        }
-      }
-      if (flag_upgrade) return true
-      // hand free
-      else {
-        for (let i in cards) {
-          if (cards[i].id == undefined) {
-            cards[i] = this.createChess(cardId, 0, 0)
-            if (this.allsrc.indexOf(cards[i].src) < 0) {
-              this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
-            }
-            return true
-          }
-        }
-      }
-      // no where to put new chess
-      return false
-    },
-    createChess (id, camp, lvl) {
-      let obj = new ChessInfo[id](this, lvl)
-      obj.hold = false         // init hold
-      obj.pos = undefined
-      obj._dodge = 0
-      obj.status = {}
-      obj.camp = camp
-      obj.equips = []
-      return obj
     },
     createUtilAttack (src, tgt) {
       let u = new util_attack(this, src, tgt)
