@@ -2,8 +2,6 @@ import { util_lucian_second_bullet, util_tristana_bomb, util_yasuo_tempest, util
 import { randInt, removeFromArr } from './helper'
 import { setTimeout } from "core-js";
 import PosInfo from './position'
-import { timingSafeEqual } from "crypto";
-import { stat } from "fs";
 
 export class buff {
   constructor (vm, src) {
@@ -797,10 +795,12 @@ export class chess {
       this.equips.push(e)
       e.equipTo(this)
       return true
+    } else {
+      this.vm.dealError('Full Equipments :)')
     }
   }
   unequip (index) {
-    this.equips[index].unequipTo()
+    this.equips[index].unequipFrom()
     this.equips.splice(index, 1)
   }
   __checkBuff (raw, type) {

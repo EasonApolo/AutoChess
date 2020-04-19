@@ -294,10 +294,11 @@ app.ws('/game/chess', (ws, req) => {
         if (data.type == 'update') {
             g_user.hand = data.hand
             g_user.board = data.board
+            g_user.equips = data.equips
             log(`CHESS: room ${ rid } | user ${ uid } UPDATE hand ${ data.hand.reduce((n,c)=>n+(c!=null),0) }`)
         } else if (data.type == 'init') {
-            if (g_user.hand && g_user.board) {
-                send({ hand: g_user.hand, board: g_user.board })
+            if (g_user.hand && g_user.board && g_user.equips) {
+                send({ hand: g_user.hand, board: g_user.board, equips: g_user.equips })
                 log(`CHESS: room ${ rid } | user ${ uid } REINIT hand ${ g_user.hand.reduce((n,c)=>n+(c!=null),0) }`)
             }
         }

@@ -56,7 +56,7 @@
 
       <!-- store -->
       <v-card class='d-flex mx-auto pa-2 ' width='39.5rem' style='position:absolute;bottom:.5rem;left:0;right:0'>
-        <div class=''>
+        <div>
           <v-btn small class='d-block mb-1' width='6rem' color='secondary' @click='deal'>deal</v-btn>
           <v-btn small class='d-block' width='6rem'>level{{game.lvl}}</v-btn>
           <div class='mt-1'>
@@ -82,7 +82,7 @@
       </v-card>
 
       <!-- equip -->
-      <v-card class='d-flex pa-2 pb-0 mx-auto flex-column justify-space-around' style='position:absolute;bottom:15.5rem;left:4rem;width:9rem;'>
+      <v-card class='d-flex pa-2 pb-0 mx-auto flex-wrap justify-space-between' style='position:absolute;bottom:15.5rem;left:4rem;width:11rem;'>
         <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index' @click='clickEquip(e, index)'>
           <img v-if='e.src' class='d-block' width='100%' :src='e.src'>
           <v-sheet v-else width='100%' height='3rem'></v-sheet>
@@ -90,8 +90,8 @@
       </v-card>
 
       <!-- hold -->
-      <v-card class='' style='position:absolute;pointer-events:none' width='6rem' :style='{left:holdX,top:holdY,width:holdWidth}'>
-        <img v-if='hold' class='d-block' width='100%' :src='hold.src'>
+      <v-card v-if='hold' style='position:absolute;pointer-events:none' :style='{left:holdX,top:holdY,width:holdWidth}'>
+        <img class='d-block' width='100%' :src='hold.src'>
       </v-card>
 
       <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
@@ -202,7 +202,7 @@ export default {
     Pop
   },
   created () {
-    addEventListener('mousemove', e => {
+    document.addEventListener('mousemove', e => {
       this.mouse.x = e.clientX
       this.mouse.y = e.clientY
     })
@@ -438,18 +438,32 @@ export default {
       this.ws.chess = new WebSocket(`${ this.ws.ip }game/chess?rid=${ this.room.id }&uid=${ this.user.id }`)
       this.ws.chess.onopen = () => { this.syncChess('init') }
       this.ws.chess.onmessage = e => {
-        let { hand, board } = JSON.parse(e.data)
+        let { hand, board, equips } = JSON.parse(e.data)
+        let equip = (chess, data) => {
+          if (data.eqp) {
+            data.eqp.map(e => {
+              chess.equip(new EquipInfo[e.id]())
+            })
+          }
+        }
         hand.map((c, idx) => {
-          if (c != null) {
+          if (c.id >= 0) {
             this.hand.cards.splice(idx, 1, this.createChess(c.id, 0, c.lvl))
+            equip(this.hand.cards[idx], c)
           }
         })
         board.map((row, y) => row.map((g, x) => {
-          if (g != null) {
+          if (g.id >= 0) {
             let newChess = this.createChess(g.id, 0, g.lvl)
             this.setChess(y, x, newChess)
+            equip(this.board.grid[y][x], g)
           }
         }))
+        equips.map((e, idx) => {
+          if (e.id >= 0) {
+            this.equips[idx] = new EquipInfo[e.id]()
+          }
+        })
       }
     },
     syncChess (type) {
@@ -457,15 +471,20 @@ export default {
       if (type == 'init') {
         data = { type: type }
       } else {
-        let board = this.board.grid.map(
-          row => row.map(
-            g => g != undefined ? { id: g.id, lvl: g.lvl } : null
-          )
-        )
-        let hand = this.hand.cards.map(
-          c => c.id ? { id: c.id, lvl: c.lvl } : null
-        )
-        data = { type: type, board: board, hand: hand }
+        let extract = (objArr, isEquip=false) => {
+          return objArr.map(c => {
+            let ret = {}
+            if (c?.id != undefined) {
+              ret = isEquip ? {id: c.id} : { id: c.id, lvl: c.lvl }
+              if (c.equips?.length > 0) ret.eqp = c.equips.map(e => ({ id: e.id }))
+            }
+            return ret
+          })
+        }
+        let board = this.board.grid.map(row => extract(row))
+        let hand = extract(this.hand.cards)
+        let equips = extract(this.equips)
+        data = { type: type, board: board, hand: hand, equips: equips }
       }
       this.ws.chess.send(JSON.stringify(data))
     },
@@ -513,6 +532,7 @@ export default {
     },
     // click events
     clickEquip (e, index) {
+      let flag_sync = true
       if (this.hold instanceof chess) return
       if (this.hold instanceof equip ) {
         this.hold.hold = undefined
@@ -526,12 +546,15 @@ export default {
           this.equips[index] = tmp
         }
       } else {
+        flag_sync = false
         this.hold = this.equips[index]
         this.hold.hold = { type: 'equip', id: index }
         this.equips[index] = {}
       }
+      flag_sync && this.syncChess('update')
     },
     clickBoard (e) {
+      let flag_sync = true
       let cx = e.offsetX * 2, cy = e.offsetY * 2
       let pos = this.getPosByCoord (cx, cy)
       if (pos == undefined) return
@@ -547,6 +570,7 @@ export default {
             this.hold = grids[y][x]
             this.hold.hold = { type: 'board', pos: [y, x] }
             grids[y][x] = undefined
+            flag_sync = false
           } else if (this.hold instanceof chess) {
             let tmp = this.hold
             this.hold.hold = undefined
@@ -554,13 +578,14 @@ export default {
             this.hold.hold = { type: 'board', pos: [y, x] }
             grids[y][x] = tmp
           } else if (this.hold instanceof equip) {
-            this.hold.hold = undefined
-            this.equiping(grids[y][x])
+            if (!this.equiping(grids[y][x])) flag_sync = false
           }
         }
       }
+      flag_sync && this.syncChess('update')
     },
     clickHand (c, index) {
+      let flag_sync = true
       if (c.id == undefined) {
         if (this.hold == undefined) return
         else if (this.hold instanceof chess) {
@@ -571,6 +596,7 @@ export default {
       }
       else if (c instanceof chess) {
         if (this.hold == undefined) {
+          flag_sync = false
           c.hold = { type: 'hand', id: index }
           this.hold = c
           this.hand.cards[index] = {}
@@ -581,11 +607,12 @@ export default {
           this.hand.cards[index] = this.hold
           this.hold = c
         } else if (this.hold instanceof equip) {
-          this.hold.hold = undefined
-          this.equiping(c)
+          if (!this.equiping(c)) {
+            flag_sync = false
+          }
         }
       }
-      // swap
+      flag_sync && this.syncChess('update')
     },
     setGrid (i, j, chess) {
       if (chess !== undefined) {  // if undefined is set to this grid
@@ -688,17 +715,20 @@ export default {
             let e = chess.equips[i]
             if (e.lvl == 0) {
               let mergedId = this.getMergedEquip(e.id, this.hold.id)
+              if (mergedId == undefined) continue
               chess.unequip(i)
               chess.equip(new EquipInfo[mergedId]())
               this.hold = undefined
-              return
+              return true
             }
           }
         }
-        // else
-        this.hold.hold = undefined
-        chess.equip(this.hold)
-        this.hold = undefined
+        // not merged, directly equip. if not success, return undefined
+        if (chess.equip(this.hold)) {
+          this.hold.hold = undefined
+          this.hold = undefined
+          return true
+        }
       }
     },
     main () {
@@ -798,24 +828,28 @@ export default {
       user actions
       */
     mousemove (e) {
-      if (this.hold) {
-        this.showChess = undefined
-        this.showPos = undefined
-        return
-      }
-      let x = e.clientX*2
-      let y = e.clientY*2
-      let pos = this.getPosByCoord(x, y)
-      if (pos) {
-        let [j, i] = pos
-        if (this.board.grid[j][i]) {
-          this.showChess = this.board.grid[j][i]
-          this.showPos = [x/2+5+'px', y/2+5+'px']
-          return
-        }
-      }
-      this.showChess = undefined
-      this.showPos = undefined
+      // if (this.hold) {
+      //   this.mouse.x = e.clientX
+      //   this.mouse.y = e.clientY
+      // }
+      // if (this.hold) {
+      //   this.showChess = undefined
+      //   this.showPos = undefined
+      //   return
+      // }
+      // let x = e.clientX*2
+      // let y = e.clientY*2
+      // let pos = this.getPosByCoord(x, y)
+      // if (pos) {
+      //   let [j, i] = pos
+      //   if (this.board.grid[j][i]) {
+      //     this.showChess = this.board.grid[j][i]
+      //     this.showPos = [x/2+5+'px', y/2+5+'px']
+      //     return
+      //   }
+      // }
+      // this.showChess = undefined
+      // this.showPos = undefined
     },
     click (e) {
       let x = e.clientX*2

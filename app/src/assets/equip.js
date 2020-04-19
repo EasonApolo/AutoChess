@@ -13,10 +13,11 @@ export class equip {
     this.lvl = lvl
     this.buffs = []
   }
-  unequipTo () {
-    for (let i in this.buffs) {
-      removeFromArr(this.chess.equips, this.buffs[i])
-    }
+  unequipFrom () {
+    this.buffs.map(b => {
+      removeFromArr(this.chess.buff, b)
+    })
+    this.chess = undefined
   }
 }
 export default [
