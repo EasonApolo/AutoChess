@@ -801,7 +801,7 @@ export class chess {
   }
   unequip (index) {
     this.equips[index].unequipFrom()
-    this.equips.splice(index, 1)
+    return this.equips.splice(index, 1)[0]
   }
   __checkBuff (raw, type) {
     let rate = 1

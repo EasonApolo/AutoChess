@@ -90,8 +90,13 @@
       </v-card>
 
       <!-- hold -->
-      <v-card v-if='hold' style='position:absolute;pointer-events:none' :style='{left:holdX,top:holdY,width:holdWidth}'>
+      <v-card v-if='hold' style='position:absolute;pointer-events:none;z-index:1' :style='{left:holdX,top:holdY,width:holdWidth}'>
         <img class='d-block' width='100%' :src='hold.src'>
+      </v-card>
+
+      <!-- sell -->
+      <v-card v-if='hold' @click='sellHoldChess' class='d-flex justify-space-around' color='grey' style='position:absolute;right:1rem;bottom:1rem;width:6rem;height:6rem'>
+        <v-icon>mdi-delete-restore</v-icon>
       </v-card>
 
       <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
@@ -148,7 +153,7 @@ export default {
       room: {},
       rooms: [],
       ws: {
-        ip: `ws://192.168.1.2:81/`,
+        ip: `ws://localhost:81/`,
         rooms: undefined,
         room: undefined,
         card: undefined,
@@ -195,7 +200,7 @@ export default {
       showChess: undefined,
       showPos: undefined,
       // ip: 'http://47.106.171.107:80/',
-      ip: 'http://192.168.1.2:81/',
+      ip: 'http://localhost:81/',
     }
   },
   components: {
@@ -501,9 +506,9 @@ export default {
         })
       }
     },
-    syncStore (type) {
-      let current = this.store.cards
-        .map(c => ({ id: c.id, lvl: c.cost-1 }))   // cost from 1, card lvl from 0, do transformation
+    syncStore (type, card=undefined) {
+      let extract = c => ({ id: c.id, lvl: c.cost-1 })  // cost from 1, card lvl from 0, do transformation
+      let current = card ? [extract(card)] : this.store.cards.map(extract)
       let data = { type: type, cards: current}
       this.ws.card.send(JSON.stringify(data))
     },
@@ -528,6 +533,8 @@ export default {
         this.store.cards[index] = {}
         this.game.gold -= wannaBuy.cost
         this.syncStore('buy')
+      } else {
+        this.dealError('No more places~')
       }
     },
     // click events
@@ -623,7 +630,7 @@ export default {
     setChess (r, c, chess=undefined) {
       let grid = this.board.grid
       // camp=0 friend, camp=1 opponent
-      if (chess === undefined) {  // swap hold and grid[i][j]
+      if (chess == undefined) {  // swap hold and grid[i][j]
         if (r <= 2) return        // cannot set at j<=2
         if (this.hold && !grid[r][c]) { // the only way chesses on board may increase
           let num = 0
@@ -643,56 +650,81 @@ export default {
         this.setGrid(r, c, chess)
       }
     },
+    traverseGrid(cond, todo, ret) {
+      let grids = this.board.grid
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (cond(grids[r][c], [r, c])) {
+            todo(ret, grids[r][c], [r, c])
+          }
+        }
+      }
+      return ret
+    },
+    traverseHand(cond, todo, ret) {
+      let cards = this.hand.cards
+      for (let i in cards) {
+        if (cond(cards[i], i)) {
+          todo(ret, cards[i], i)
+        }
+      }
+      return ret
+    },
+    getGrid ([r, c]) {
+      return this.board.grid[r][c]
+    },
+    getChessByPos (pos) {
+      return pos instanceof Array ? this.getGrid(pos) : this.hand.cards[pos]
+    },
     addChess (cardId) {
       let cards = this.hand.cards
       let grids = this.board.grid
-      // enough to upgrade ?
+      // count
       let count = [[], [], []]
-      let flag_upgrade = false
-      for (let r in grids) {
-        for (let c in grids[r]) {
-          if (grids[r][c] && grids[r][c].id === cardId) {
-            count[grids[r][c].lvl].push([r,c])
+      let cond = c => c?.id == cardId
+      let todo = (ret, c, pos) => ret[c.lvl].push(pos)
+      this.traverseGrid(cond, todo, count)
+      this.traverseHand(cond, todo, count)
+      // upgrade if count enough
+      let flag_addOK = count[0].length == 2
+      let set = (pos, chess) => {
+        pos instanceof Array ? this.setChess(...pos, chess) : cards[pos] = chess
+      }
+      let compose = (poses, lvl) => {
+        let equips = []
+        poses.map(pos => {
+          let chess = this.getChessByPos(pos)
+          for (let i = chess.equips.length - 1; i >= 0; i--) {
+            equips.push(chess.unequip(i))
           }
+          set(pos, {})
+        })
+        let composedChess = this.createChess(cardId, 0, lvl)
+        set(poses[0], composedChess)
+        for (let i in equips) {
+          this.equiping(composedChess, equips[i]) || this.depositEquipment(equips[i])
         }
       }
-      for (let i in cards) {
-        if (cards[i] && cards[i].id === cardId) {
-          count[cards[i].lvl].push(i)
+      if (count[0].length == 2) {
+        compose(count[0], 1)
+        if (count[1].length == 2) {
+          compose(count[1], 2)
         }
       }
-      // upgrade
-      for (let i = 0; i < 2; i++) {
-        if ((i === 0 && count[i].length === 2) || (i === 1 && count[i].length === 3)) {
-          flag_upgrade = true
-          for (let j in count[i]) {
-            let pos = count[i][j]
-            let chess = j == 0 ? this.createChess(cardId, 0, i+1) : undefined
-            if (pos.length === 2) {
-              this.setChess(pos[0], pos[1], chess)
-            } else {
-              cards[pos] = chess
-            }
-          }
-          count[i+1].push(count[i][0])
-        }
-      }
-      if (flag_upgrade) return true
-      // hand free
-      else {
+      if (!flag_addOK) {
         for (let i in cards) {
           if (cards[i].id == undefined) {
             cards[i] = this.createChess(cardId, 0, 0)
-            this.syncChess('update')
             if (this.allsrc.indexOf(cards[i].src) < 0) {
               this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
             }
-            return true
+            flag_addOK = true
+            break
           }
         }
       }
-      // no where to put new chess
-      return false
+      flag_addOK && this.syncChess('update')
+      return flag_addOK
     },
     createChess (id, camp, lvl) {
       let obj = new ChessInfo[id](this, lvl)
@@ -707,29 +739,43 @@ export default {
     getMergedEquip (id1, id2) {
       return merge_map[id1][id2] ?? merge_map[id2][id1]
     },
-    equiping (chess) {
-      if (chess && this.hold instanceof equip) {
-        // merge
-        if (this.hold.lvl == 0 && chess.equips?.length > 0) {
-          for (let i in chess.equips) {
-            let e = chess.equips[i]
-            if (e.lvl == 0) {
-              let mergedId = this.getMergedEquip(e.id, this.hold.id)
-              if (mergedId == undefined) continue
-              chess.unequip(i)
-              chess.equip(new EquipInfo[mergedId]())
-              this.hold = undefined
-              return true
-            }
-          }
-        }
-        // not merged, directly equip. if not success, return undefined
-        if (chess.equip(this.hold)) {
-          this.hold.hold = undefined
-          this.hold = undefined
+    depositEquipment (e) {
+      for (let i in this.equips) {
+        if (this.equips[i].id == undefined) {
+          this.equips[i] = e
           return true
         }
       }
+      this.dealError('No Room 4 Equipments Storage')
+    },
+    equiping (chess, providedEquip=undefined) {
+      let outEquip = providedEquip ?? this.hold
+      let flag_equipOK = false
+      if (chess && outEquip instanceof equip) {
+        // try merging
+        if (outEquip.lvl == 0 && chess.equips?.length > 0) {
+          for (let i in chess.equips) {
+            let e = chess.equips[i]
+            if (e.lvl > 0) continue
+            let mergedId = this.getMergedEquip(e.id, outEquip.id)
+            if (mergedId == undefined) continue
+            chess.unequip(i)
+            chess.equip(new EquipInfo[mergedId]())
+            flag_equipOK = true
+            break
+          }
+        }
+        // not merged, try directly equip
+        if (!flag_equipOK && chess.equip(outEquip)) {
+          flag_equipOK = true
+        }
+        // if equiped and outEquip from this.hold, update hold
+        if (flag_equipOK && providedEquip == undefined) {
+          this.hold.hold = undefined
+          this.hold = undefined
+        }
+      }
+      return flag_equipOK
     },
     main () {
       this.clearAll()
@@ -922,25 +968,24 @@ export default {
       store related functions
       */
     sellHoldChess () {
+      if (!(this.hold instanceof chess)) this.dealError('Cannot Sell This :<')
       let lvl = this.hold.lvl
-      let cost = CardInfo[this.hold.id].cost
+      let card = CardInfo[this.hold.id]
+      let cost = card.cost
       let price
       switch (lvl) {
         case 0: price = cost;break;
         case 1: price = cost+2;break;
         case 2: price = cost+4;break;
       }
-      if (!price) console.log('price is undefined')
-      // put chess.equips into this.equips, redundant are discarded
-      if (this.hold.equips.length > 0) {
-        for (let i in this.equips) {
-          if (!this.equips[i]) {
-            this.equips[i] = this.hold.equips.splice(0, 1)
-            if (this.hold.equips.length === 0) break
-          }
-        }
-      }
       this.game.gold += price
+      // put chess.equips into this.equips, redundant are discarded
+      for (let i = this.hold.equips?.length - 1; i >= 0; i--) {
+        this.depositEquipment(this.hold.unequip(i))
+      }
+      console.log('sync')
+      this.syncStore('sell', card)
+      this.hold.hold = undefined
       this.hold = undefined
     },
     addExp (exp) {

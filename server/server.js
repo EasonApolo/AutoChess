@@ -265,13 +265,16 @@ app.ws('/game/card', (ws, req) => {
                 return card.id == undefined ? null : card.id
             })
             log(`CARD: game ${ rid } | user ${ uid } BUY g_user.store now: `, g_user.store)
+        } else if (data.type == 'sell') {
+            putback(data.cards)
+            log(`CARD: game ${ rid } | user ${ uid } PUTBACK game.pool now`, pool.map(v => v.length))
         }
     }
     log(`CARD: room ${ rid } | user ${ uid } ESTABLISHED`)
 })
 app.ws('/game/gold', (ws, req) => {
     let { rid, uid } = req.query
-    const INIT_GOLD = 10
+    const INIT_GOLD = 100
     let game = games[rid], g_user = game.users[uid]
     ws.onmessage = e => {
         if (e.data == 'init') {
@@ -289,17 +292,18 @@ app.ws('/game/chess', (ws, req) => {
     let { rid, uid } = req.query
     let game = games[rid], g_user = game.users[uid]
     let send = wsSend(ws)
+    let count = arr => arr.reduce((n,c)=>n+(c.id>=0), 0)
     ws.onmessage = e => {
         let data = JSON.parse(e.data)
         if (data.type == 'update') {
             g_user.hand = data.hand
             g_user.board = data.board
             g_user.equips = data.equips
-            log(`CHESS: room ${ rid } | user ${ uid } UPDATE hand ${ data.hand.reduce((n,c)=>n+(c!=null),0) }`)
+            log(`CHESS: room ${ rid } | user ${ uid } UPDATE hand ${ count(data.hand) }`)
         } else if (data.type == 'init') {
             if (g_user.hand && g_user.board && g_user.equips) {
                 send({ hand: g_user.hand, board: g_user.board, equips: g_user.equips })
-                log(`CHESS: room ${ rid } | user ${ uid } REINIT hand ${ g_user.hand.reduce((n,c)=>n+(c!=null),0) }`)
+                log(`CHESS: room ${ rid } | user ${ uid } REINIT hand ${ count(g_user.hand) }`)
             }
         }
     }
