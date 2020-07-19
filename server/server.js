@@ -15,6 +15,9 @@ var rooms = []
 var users = []
 /*
     game: {
+        turn: int,
+        stage: 0|1,
+        time: int,
         pool: [[]*n]*5,
         users: {
             id: {
@@ -108,7 +111,7 @@ app.post('/user/signup', (req, res) => {
 /*
     room
 */
-const MAX_N_PLAYERS = 4
+const MAX_N_PLAYERS = 2
 var getNewRoomId = (function () {
     let id = 0
     return function () {
@@ -362,6 +365,57 @@ app.post('/room/start', (req, res) => {
         log(`START: game ${ room.id } | pool `, new_game.pool.map(pool_lvl => pool_lvl.length), )
     }
 })
+
+
+/*
+    Game Main Thread
+*/
+const TIME_STAGE_0 = 15
+app.ws('/game', (ws, req) => {
+    let { rid, uid } = req.query
+    let game = games[rid], g_user = game.users[uid]
+    let users = Object.entries(game.users)  // users = [[uid, user], ...]
+    g_user.ws = wsSend(ws)
+    if (users.filter(([uid, user]) => !user.ws).length == 0) {
+        main(game)
+    }
+    ws.onmessage = e => {
+        let data = JSON.parse(e.data)
+        if (data.type == 'over') {
+            g_user.flag.over = true
+            if (users.filter(([uid, user]) => !user.flag.over).length == 0) {
+                users.map(([_, user]) => user.flag.over = false)
+                game.turn += 1, game.stage = 0, game.time = TIME_STAGE_0
+            }
+        }
+    }
+})
+function main (game) {
+    game.turn = 0, game.stage = 0, game.time = TIME_STAGE_0
+    let users = Object.entries(game.users)
+    let timer = undefined
+    let workflow = () => {
+        if (game.stage == 0) {
+            if (game.time == TIME_STAGE_0) {
+                users.map(([_, user]) => user.ws({ type: 'turn', turn: game.turn, stage: game.stage, time: game.time }))
+                game.time --
+            }
+            if (game.time <= 0) {
+                game.stage = 1
+                users.map(([_, user], idx) => {
+                    let oppo_idx = ((game.turn % users.length) + idx)
+                    user.ws({
+                        type: 'turn', turn: game.turn, stage: game.stage, time: game.time,
+                        oppo: { idx: oppo_idx, board: users[oppo_idx] }
+                    })
+                })
+            } else {
+                game.time --
+            }
+        }
+    }
+    timer = setInterval(workflow, 1000)
+}
 
 
 /*

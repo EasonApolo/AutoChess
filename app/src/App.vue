@@ -50,12 +50,16 @@
     </v-card>
 
     <div v-else-if='state == 3' class='game' style='position:relative'>
-      <v-card class='mx-auto' style='position:absolute;bottom:15.5rem;left:0;right:0' width='750px' height='550px' ref='container'>
+      <v-chip class="mx-auto" style='position:absolute;left:0;right:0;top:.5rem;width:6rem' color="primary" text-color="white">
+        <v-avatar left class="primary darken-2">{{game.time}}</v-avatar>{{stageName}}
+      </v-chip>
+
+      <v-card class='mx-auto' style='position:absolute;top:3rem;left:0;right:0' width='750px' height='550px' ref='container'>
         <canvas ref='canvas' style='width:100%;height:100%' :width='w' :height='h' @click='clickBoard'></canvas>
       </v-card>
 
       <!-- store -->
-      <v-card class='d-flex mx-auto pa-2 ' width='39.5rem' style='position:absolute;bottom:.5rem;left:0;right:0'>
+      <v-card class='d-flex mx-auto pa-2 ' width='39.5rem' style='position:absolute;top:45.375rem;left:0;right:0'>
         <div>
           <v-btn small class='d-block mb-1' width='6rem' color='secondary' @click='deal'>deal</v-btn>
           <v-btn small class='d-block' width='6rem'>level{{game.lvl}}</v-btn>
@@ -71,7 +75,7 @@
       </v-card>
 
       <!-- hand -->
-      <v-card class='d-flex mx-auto pa-2 pl-0 justify-space-around' width='59rem' style='position:absolute;bottom:8rem;left:0;right:0'>
+      <v-card class='d-flex mx-auto pa-2 pl-0 justify-space-around' width='59rem' style='position:absolute;top:37.875rem;left:0;right:0'>
         <v-card class='ml-2' width='6rem' v-for='(c, index) in hand.cards' :key='index' @click='clickHand(c, index)'>
           <img v-if='c.src' class='d-block' width='100%' :src='c.src'>
           <v-sheet v-else width='100%' height='6rem'></v-sheet>
@@ -82,7 +86,7 @@
       </v-card>
 
       <!-- equip -->
-      <v-card class='d-flex pa-2 pb-0 mx-auto flex-wrap justify-space-between' style='position:absolute;bottom:15.5rem;left:4rem;width:11rem;'>
+      <v-card class='d-flex pa-2 pb-0 mx-auto flex-wrap justify-space-between' style='position:absolute;top:26.375rem;left:.5rem;width:11rem;'>
         <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index' @click='clickEquip(e, index)'>
           <img v-if='e.src' class='d-block' width='100%' :src='e.src'>
           <v-sheet v-else width='100%' height='3rem'></v-sheet>
@@ -95,7 +99,7 @@
       </v-card>
 
       <!-- sell -->
-      <v-card v-if='hold' @click='sellHoldChess' class='d-flex justify-space-around' color='grey' style='position:absolute;right:1rem;bottom:1rem;width:6rem;height:6rem'>
+      <v-card v-if='showSell' @click='sellHoldChess' class='d-flex justify-space-around' color='grey' style='position:absolute;right:1rem;bottom:1rem;width:6rem;height:6rem'>
         <v-icon>mdi-delete-restore</v-icon>
       </v-card>
 
@@ -168,7 +172,10 @@ export default {
       ybase: 0,
       mouse: {x:undefined, y:undefined},  // this coordinate is doubled
       game: {
-        turn: 0,
+        turn: undefined,
+        stage: undefined,
+        stage0Time: 15,
+        time: 0,
         gold: 10,
         exp: 0,
         lvl: 1,
@@ -208,8 +215,8 @@ export default {
   },
   created () {
     document.addEventListener('mousemove', e => {
-      this.mouse.x = e.clientX
-      this.mouse.y = e.clientY
+      this.mouse.x = e.pageX
+      this.mouse.y = e.pageY
     })
     this.initBoard()
   },
@@ -229,6 +236,12 @@ export default {
     },
     holdWidth () {
       return this.hold instanceof equip ? '3rem' : '6rem'
+    },
+    showSell () {
+      return this.hold && this.hold instanceof chess
+    },
+    stageName () {
+      return ['准备', '战斗'][this.game.stage]
     }
   },
   watch: {
@@ -265,6 +278,16 @@ export default {
     },
     'game.lvl': function (new_val, old_val) {
       this.syncExp('update')
+    },
+    'game.turn': function (new_val, old_val) {
+      if (old_val != undefined) {
+        this.syncChess('init')
+      }
+    },
+    'game.stage': function (new_val, old_val) {
+      if (new_val == 0) {
+        this.game.time = this.game.stage0Time
+      }
     }
   },
   methods: {
@@ -405,6 +428,7 @@ export default {
       this.wsGold()
       this.wsChess()
       this.wsExp()
+      this.wsGame()
       this.queue.push(this.actAll)
       this.equips[0] = new EquipInfo[0]()
       this.equips[1] = new EquipInfo[0]()
@@ -412,6 +436,21 @@ export default {
       this.equips[3] = new EquipInfo[1]()
     },
     // Gold and Exp
+    wsGame () {
+      let timer
+      this.ws.game = new WebSocket(`${ this.ws.ip }game?rid=${ this.room.id }&uid=${ this.user.id }`)
+      this.ws.game.onmessage = e => {
+        let data = JSON.parse(e.data)
+        if (data.type == 'turn') {
+          this.game.turn = data.turn, this.game.stage = data.stage, this.game.time = data.time
+          if (this.game.stage == 0) {
+            timer = setInterval(() => {
+              this.game.time > 0 && this.game.time--
+            }, 1000)
+          }
+        }
+      }
+    },
     wsGold () {
       this.ws.gold = new WebSocket(`${ this.ws.ip }game/gold?rid=${ this.room.id }&uid=${ this.user.id }`)
       this.ws.gold.onopen = () => {
@@ -552,7 +591,8 @@ export default {
           this.hold.hold = { type: 'equip', id: index }
           this.equips[index] = tmp
         }
-      } else {
+      } else if (this.hold == undefined) {
+        if (this.equips[index].id == undefined) return
         flag_sync = false
         this.hold = this.equips[index]
         this.hold.hold = { type: 'equip', id: index }
