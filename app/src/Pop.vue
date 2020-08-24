@@ -15,7 +15,6 @@
 </template>
 
 <script>
-import bus from './bus.js'
 export default {
   name: 'pop',
   data () {
@@ -26,7 +25,7 @@ export default {
     }
   },
   created () {
-    bus.$on('pop', this.handler)
+    this.$bus.$on('pop', this.handler)
   },
   methods: {
     handler: function (text) {

@@ -385,7 +385,7 @@ app.ws('/game', (ws, req) => {
             g_user.flag.over = true
             if (users.filter(([uid, user]) => !user.flag.over).length == 0) {
                 users.map(([_, user]) => user.flag.over = false)
-                game.turn += 1, game.stage = 0, game.time = TIME_STAGE_0
+                game.turn += 1, game.stage = 0, game.time = TIME_STAGE_0        
             }
         }
     }
