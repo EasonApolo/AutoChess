@@ -1,12 +1,19 @@
 <script>
+import CardInfo from './assets/card'
 import ChessInfo, { chess, buff_regainMana } from './assets/chess'
 import EquipInfo, { equip, merge_map } from './assets/equip'
+import ClassInfo from './assets/class'
 export default {
   data () {
     return {
     }
   },
   computed: {
+    getClassInfo () {
+      return (c) => {
+        return ClassInfo[c]
+      }
+    },
     sortedRoomUsers () {
       let users = this.room.users
       return users.sort((a,b) => a.hp - b.hp)
@@ -28,6 +35,27 @@ export default {
     }
   },
   methods: {
+    traverseGrid(cond, todo, ret) {
+      let grids = this.board.grid
+      for (let r in grids) {
+        for (let c in grids[r]) {
+          if (cond(grids[r][c], [r, c])) {
+            todo(ret, grids[r][c], [r, c])
+          }
+        }
+      }
+      return ret
+    },
+    traverseHand(cond, todo, ret) {
+      let cards = this.hand.cards
+      for (let i in cards) {
+        if (cond(cards[i], i)) {
+          todo(ret, cards[i], i)
+        }
+      }
+      return ret
+    },
+
     buyCard(index) {
       let wannaBuy = this.store.cards[index]
       if (this.game.gold < wannaBuy.cost) {
@@ -74,26 +102,6 @@ export default {
         this.setGrid(r, c, chess)
       }
     },
-    traverseGrid(cond, todo, ret) {
-      let grids = this.board.grid
-      for (let r in grids) {
-        for (let c in grids[r]) {
-          if (cond(grids[r][c], [r, c])) {
-            todo(ret, grids[r][c], [r, c])
-          }
-        }
-      }
-      return ret
-    },
-    traverseHand(cond, todo, ret) {
-      let cards = this.hand.cards
-      for (let i in cards) {
-        if (cond(cards[i], i)) {
-          todo(ret, cards[i], i)
-        }
-      }
-      return ret
-    },
     getGrid ([r, c]) {
       return this.board.grid[r][c]
     },
@@ -139,9 +147,6 @@ export default {
         for (let i in cards) {
           if (cards[i].id == undefined) {
             cards[i] = this.createChess(cardId, 0, 0)
-            if (this.allsrc.indexOf(cards[i].src) < 0) {
-              this.allsrc.push(cards[i].src)// create img element enable ctx.drawImage()
-            }
             flag_addOK = true
             break
           }
@@ -158,8 +163,12 @@ export default {
       obj.status = {}
       obj.camp = camp
       obj.equips = []
+      if (!this.allsrc.hasOwnProperty(id)) {
+        this.allsrc[id] = CardInfo[id].src
+      }
       return obj
     },
+
     getMergedEquip (id1, id2) {
       return merge_map[id1][id2] ?? merge_map[id2][id1]
     },
@@ -201,6 +210,7 @@ export default {
       }
       return flag_equipOK
     },
+
     sellHoldChess () {
       if (!(this.hold instanceof chess)) this.dealError('Cannot Sell This :<')
       let lvl = this.hold.lvl
@@ -344,6 +354,32 @@ export default {
         }
       }
     },
+    // pos:     the original [r, c]
+    // return:  reverse pos if camp == 1
+    getPosByCamp (pos, camp) {
+      if (camp == 1) {
+        return [this.board.nrow - 1 - pos[0], this.board.ncol - 1 - pos[1]]
+      } else { return pos }
+    },
+    // chess:   a chess (eg grid[r][c])
+    // eqpdata: a array of eqp data
+    equipingByData (chess, eqpData) {
+      eqpData.map(e => {
+        chess.equip(new EquipInfo[e.id]())
+      })
+    },
+    addChessByData (board, camp) {
+      board.map((rowData, r) => rowData.map((chessData, c) => {
+        if (chessData.id >= 0) {
+          let newChess = this.createChess(chessData.id, camp, chessData.lvl)
+          if (chessData.eqp) {
+            this.equipingByData(newChess, chessData.eqp)
+          }
+          let pos = this.getPosByCamp([r, c], camp)
+          this.setChess(...pos, newChess)
+        }
+      }))
+    }
   }
 }
 </script>

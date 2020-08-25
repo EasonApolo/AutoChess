@@ -86,7 +86,7 @@
       </v-card>
 
       <!-- equip -->
-      <v-card class='d-flex pa-2 pb-0 mx-auto flex-wrap justify-space-between' style='position:absolute;top:26.375rem;left:.5rem;width:11rem;'>
+      <v-card class='d-flex pa-2 pb-0 mx-auto flex-wrap justify-space-between' style='position:absolute;top:26.375rem;left:1rem;width:11rem;'>
         <v-card class='mb-2' width='3rem' v-for='(e, index) in equips' :key='index' @click='clickEquip(e, index)'>
           <img v-if='e.src' class='d-block' width='100%' :src='e.src'>
           <v-sheet v-else width='100%' height='3rem'></v-sheet>
@@ -101,6 +101,23 @@
       <!-- sell -->
       <v-card v-if='showSell' @click='sellHoldChess' class='d-flex justify-space-around' color='grey' style='position:absolute;right:1rem;bottom:1rem;width:6rem;height:6rem'>
         <v-icon>mdi-delete-restore</v-icon>
+      </v-card>
+
+      <!-- players -->
+      <v-card class='d-flex flex-column pa-2' style='position:absolute;right:1rem;bottom:8rem;width:15rem'>
+        <v-card :class='{"blue lighten-5":index==game.oppoId}' class='my-1 pa-2' v-for='(p, index) in game.players' :key='index'>
+          <v-chip color="primary" text-color="white">lvl:{{p.lvl}}</v-chip>
+          <v-chip>hp:{{p.hp}}</v-chip>
+          {{p.name}}
+        </v-card>
+      </v-card>
+
+      <!-- classes -->
+      <v-card class='d-flex flex-column pa-2' style='position:absolute;left:1rem;bottom:14rem;width:15rem'>
+        <v-card class='my-1 pa-2' v-for='(n, c, index) in game.classes' :key='index'>
+          <v-chip :class='{"blue lighten-4":index==n.active}' v-for='(s, index) in getClassInfo(c).stage' :key='index'>{{s}}</v-chip>
+          {{getClassInfo(c).name}}
+        </v-card>
       </v-card>
 
       <v-card class='show' v-if='showChess!==undefined' :style='{left:showPos[0],top:showPos[1]}'>
@@ -121,7 +138,7 @@
         </div>
       </v-card>
 
-      <div v-for='src in allsrc' :key='src' style='display:none'>
+      <div v-for='(id, src) in allsrc' :key='id' style='display:none'>
         <img :src='src'>
       </div>
     </div>
@@ -180,11 +197,14 @@ export default {
         classes: {},
         schedule: {},
         hp: 100,
-        enemy: undefined,
+        oppoId: undefined,
         combo: 0,
+        players: []
       },
       hold: undefined,
       board: {
+        nrow: 6,
+        ncol: 7,
         grid: undefined,
       },
       store: {
@@ -194,7 +214,7 @@ export default {
         cards: new Array(9).fill(new Object())
       },
       equips: new Array(9).fill(new Object()),
-      allsrc: [],
+      allsrc: {},
       queue: [],
       util: [],
       // ip: 'http://47.106.171.107:80/',
@@ -228,8 +248,8 @@ export default {
       game main thread
       */
     initBoard () {
-      let tmp = new Array(6).fill(undefined)
-      this.board.grid = tmp.map(v => new Array(7).fill(undefined))
+      let tmp = new Array(this.board.nrow).fill(undefined)
+      this.board.grid = tmp.map(v => new Array(this.board.ncol).fill(undefined))
     },
     initializeGame () {
       // init board
@@ -266,71 +286,71 @@ export default {
       window.requestAnimationFrame(this.main)
     },
     schedule () {
-      let s = this.game.schedule
-      let grids = this.board.grid
-      let OK = false // flag for transimission done
-      // preparing stage
-      if (s.status === 'prepare') {
-        if (s.p === 0) {
-          // this.fetchGameStatus()
-        }
-        else if (s.p < s.pn) {
-        }
-        else if (s.p === s.pn) {
-          // collect data and upload to server
-          this.game.clickBoard = false
-          let data = {grids:[], hand: [], equip: []}
-          for (let r in grids) {
-            for (let c in grids[r]) {
-              if (grids[r][c]) {
-                let d = {pos:[r,c], id:grids[r][c].id, lvl: grids[r][c].lvl}
-                if (grids[r][c].equips) {
-                  d.equip = []
-                  for (let i in grids[r][c].equips) {
-                    d.equip.push(grids[r][c].equips[i].id)
-                  }
-                }
-                data.grids.push(d)
-              }
-            }
-          }
-          for (let i in this.hand.cards) {
-            if (this.hand[i] !== undefined) {
-              data.hand.push(this.hand[i].id)
-            }
-          }
-          for (let i in this.equips) {
-            if (this.equips[i] !== undefined) {
-              data.equip.push(this.equips[i].id)
-            }
-          }
-          let param = {roomid: this.room.id, name: this.username, data: JSON.stringify(data)}
-          // this.fetch('data/start', param).then(json => {
-          //   this.setChessByData(JSON.parse(json.data), 1)
-          //   this.game.enemy = json
-          //   this.game.damageRecord = []
-          //   this.game.schedule = {status: 'battle', p: 0, pn: 100000}
-          //   this.startRound()
-          // })
-        }
-        else if (s.p > s.pn) {
-        }
-        s.p ++
-      } else if (s.status === 'battle') {
-        if (s.p == s.pn) {
-          let param = {roomid: this.room.id, name: this.username, hp: this.game.hp}
-          this.fetch('data/end', param).then(json => {
-            this.initBoard()
-            this.setChessByData(JSON.parse(json.data), 0)
-            this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
-            this.game.clickBoard = true
-          })
-        } else if (s.p > 1) {
-        }
-        s.p++
-      } else {
-        this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
-      }
+      // let s = this.game.schedule
+      // let grids = this.board.grid
+      // let OK = false // flag for transimission done
+      // // preparing stage
+      // if (s.status === 'prepare') {
+      //   if (s.p === 0) {
+      //     // this.fetchGameStatus()
+      //   }
+      //   else if (s.p < s.pn) {
+      //   }
+      //   else if (s.p === s.pn) {
+      //     // collect data and upload to server
+      //     this.game.clickBoard = false
+      //     let data = {grids:[], hand: [], equip: []}
+      //     for (let r in grids) {
+      //       for (let c in grids[r]) {
+      //         if (grids[r][c]) {
+      //           let d = {pos:[r,c], id:grids[r][c].id, lvl: grids[r][c].lvl}
+      //           if (grids[r][c].equips) {
+      //             d.equip = []
+      //             for (let i in grids[r][c].equips) {
+      //               d.equip.push(grids[r][c].equips[i].id)
+      //             }
+      //           }
+      //           data.grids.push(d)
+      //         }
+      //       }
+      //     }
+      //     for (let i in this.hand.cards) {
+      //       if (this.hand[i] !== undefined) {
+      //         data.hand.push(this.hand[i].id)
+      //       }
+      //     }
+      //     for (let i in this.equips) {
+      //       if (this.equips[i] !== undefined) {
+      //         data.equip.push(this.equips[i].id)
+      //       }
+      //     }
+      //     let param = {roomid: this.room.id, name: this.username, data: JSON.stringify(data)}
+      //     // this.fetch('data/start', param).then(json => {
+      //     //   this.setChessByData(JSON.parse(json.data), 1)
+      //     //   this.game.enemy = json
+      //     //   this.game.damageRecord = []
+      //     //   this.game.schedule = {status: 'battle', p: 0, pn: 100000}
+      //     //   this.startRound()
+      //     // })
+      //   }
+      //   else if (s.p > s.pn) {
+      //   }
+      //   s.p ++
+      // } else if (s.status === 'battle') {
+      //   if (s.p == s.pn) {
+      //     let param = {roomid: this.room.id, name: this.username, hp: this.game.hp}
+      //     this.fetch('data/end', param).then(json => {
+      //       this.initBoard()
+      //       this.setChessByData(JSON.parse(json.data), 0)
+      //       this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
+      //       this.game.clickBoard = true
+      //     })
+      //   } else if (s.p > 1) {
+      //   }
+      //   s.p++
+      // } else {
+      //   this.game.schedule = {status: 'prepare', p: 0, pn: schedule.prepare.time}
+      // }
     },
   }
 }

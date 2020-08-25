@@ -36,7 +36,6 @@ export default {
     }
   },
   methods: {
-    
     // Gold and Exp
     wsGame () {
       let timer
@@ -51,8 +50,12 @@ export default {
             }, 1000)
           }
           else if (this.game.stage == 1) {
-            data.oppo.board[1]
+            this.game.oppoId = parseInt(data.oppo.board[0])
+            this.addChessByData(data.oppo.board[1].board, 1)
+            this.startRound()
           }
+        } else if (data.type == 'updatePlayersInfo') {
+          this.game.players = data.playersInfo
         }
       }
     },
@@ -88,26 +91,16 @@ export default {
       this.ws.chess.onopen = () => { this.syncChess('init') }
       this.ws.chess.onmessage = e => {
         let { hand, board, equips } = JSON.parse(e.data)
-        let equip = (chess, data) => {
-          if (data.eqp) {
-            data.eqp.map(e => {
-              chess.equip(new EquipInfo[e.id]())
-            })
-          }
-        }
         hand.map((c, idx) => {
           if (c.id >= 0) {
-            this.hand.cards.splice(idx, 1, this.createChess(c.id, 0, c.lvl))
-            equip(this.hand.cards[idx], c)
+            let newChess = this.createChess(c.id, 0, c.lvl)
+            if (c.eqp) {
+              this.equipingByData(newChess, c.eqp)
+            }
+            this.hand.cards.splice(idx, 1, newChess)
           }
         })
-        board.map((row, y) => row.map((g, x) => {
-          if (g.id >= 0) {
-            let newChess = this.createChess(g.id, 0, g.lvl)
-            this.setChess(y, x, newChess)
-            equip(this.board.grid[y][x], g)
-          }
-        }))
+        this.addChessByData(board, 0)
         equips.map((e, idx) => {
           if (e.id >= 0) {
             this.equips[idx] = new EquipInfo[e.id]()

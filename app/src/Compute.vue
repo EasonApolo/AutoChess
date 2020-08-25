@@ -1,5 +1,7 @@
 <script>
 import PosInfo from './assets/position'
+import { randInt, removeFromArr, numberize, findArr } from './assets/helper'
+import { util_tgt, util_attack} from './assets/util'
 
 export default {
   data () {

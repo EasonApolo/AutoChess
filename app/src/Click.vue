@@ -43,7 +43,7 @@ export default {
       let flag_sync = true
       let cx = e.offsetX * 2, cy = e.offsetY * 2
       let pos = this.getPosByCoord (cx, cy)
-      if (pos == undefined) return
+      if (pos == undefined || this.game.stage == 1) return
       else {
         let [y, x] = pos
         let grids = this.board.grid
